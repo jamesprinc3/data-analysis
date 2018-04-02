@@ -1,5 +1,7 @@
 import dask.dataframe as dd
+import pandas as pd
 import numpy as np
+import fitting
 
 
 file = "/Users/jamesprince/Google Drive/Imperial/4/Project/data/2018-03-25.parquet"
@@ -111,14 +113,35 @@ def calculate_stats(df: dd) -> None:
     print("average buy price: " + str(avg_buy_price))
     print("std. dev. of buy price: " + str(std_dev_buy_price))
 
-    print("percentage of orders canceled: " + str((100*num_cancel) / num_received) + " %")
-    print("percentage of orders filled: " + str((100*num_trades) / num_received) + " %")
+    print("percentage of orders canceled: " + str((100*num_cancel) / num_received) + "%")
+    print("percentage of orders filled: " + str((100*num_trades) / num_received) + "%")
 
-    print("percentage of received messages: " + str((100*num_received) / num_total_msgs) + " %")
-    print("percentage of open messages: " + str((100*num_open) / num_total_msgs) + " %")
-    print("percentage of done messages: " + str((100*num_done) / num_total_msgs) + " %")
-    print("percentage of match messages: " + str((100*num_match) / num_total_msgs) + " %")
-    print("percentage of change messages: " + str((100*num_change) / num_total_msgs) + " %")
+    print("percentage of received messages: " + str((100*num_received) / num_total_msgs) + "%")
+    print("percentage of open messages: " + str((100*num_open) / num_total_msgs) + "%")
+    print("percentage of done messages: " + str((100*num_done) / num_total_msgs) + "%")
+    print("percentage of match messages: " + str((100*num_match) / num_total_msgs) + "%")
+    print("percentage of change messages: " + str((100*num_change) / num_total_msgs) + "%")
 
 
-calculate_stats(btc_usd_df)
+def get_distribution(data, description: str):
+    data = data[~((data - data.mean()).abs() > 3 * data.std())]
+    sampled_data = data.sample(n=1000)
+    sampled_data = keep_3_std_dev(sampled_data)
+
+    fitting.best_fit_with_graphs(sampled_data, description)
+
+
+def keep_3_std_dev(data: pd.Series) -> pd.Series:
+    return data[~((data - data.mean()).abs() > 3 * data.std())]
+
+# num_total = total(df)
+# num_btc_usd = total(btc_usd_df)
+# print("percentage of orders of this market vs whole feed: " + str((100*num_btc_usd) / num_total) + "%")
+# calculate_stats(btc_usd_df)
+
+
+btc_usd_price_buy = pd.Series(get_side('buy', btc_usd_df)['price'].astype('float64').tolist())
+btc_usd_price_sell = pd.Series(get_side('sell', btc_usd_df)['price'].astype('float64').tolist())
+
+get_distribution(btc_usd_price_buy, 'BTC-USD buy side')
+get_distribution(btc_usd_price_sell, 'BTC-USD sell side')
