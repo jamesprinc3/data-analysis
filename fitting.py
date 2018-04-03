@@ -125,7 +125,7 @@ def best_fit_params(data, distribution, bins=200, ax=None):
 
 
 def make_pdf(dist, params, size=10000):
-    """Generate distributions's Propbability Distribution Function """
+    """Generate distributions' Probability Distribution Function"""
 
     # Separate parts of parameters
     arg = params[:-2]
@@ -143,30 +143,13 @@ def make_pdf(dist, params, size=10000):
 
     return pdf
 
+
 def best_fit_with_graphs(data, data_desc: str, bins=200, axes=None):
-
-    print(data)
     data = data.dropna()
-    print(data)
-    print("min: " + str(data.min()))
-    print("max: " + str(data.max()))
-
-    # Plot for comparison
-    plt.figure(figsize=(12,8))
-    ax = data.plot(kind='hist', bins=50, density=True, alpha=0.5)
-    # Save plot limits
-    dataYLim = ax.get_ylim()
-    print(dataYLim)
 
     # Find best fit distribution
-    best_fit_name, best_fir_paramms = best_fit_distribution(data, 200, ax)
+    best_fit_name, best_fir_paramms = best_fit_distribution(data, 200)
     best_dist = getattr(st, best_fit_name)
-
-    # Update plots
-    ax.set_ylim(dataYLim)
-    ax.set_title(data_desc + u'\n All Fitted Distributions')
-    ax.set_xlabel(u'Price ($?)')
-    ax.set_ylabel('Frequency')
 
     # Make PDF
     pdf = make_pdf(best_dist, best_fir_paramms)
@@ -181,11 +164,8 @@ def best_fit_with_graphs(data, data_desc: str, bins=200, axes=None):
     dist_str = '{}({})'.format(best_fit_name, param_str)
 
     ax.set_title(data_desc + u' with best fit distribution \n' + dist_str)
-    ax.set_xlabel(u'Price ($?)')
+    ax.set_xlabel(u'Price ($)')
 
-    print(dist_str)
-
-    plt.show()
 
 # Example:
 # data = pd.Series(sm.datasets.elnino.load_pandas().data.set_index('YEAR').values.ravel())

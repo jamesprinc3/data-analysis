@@ -2,15 +2,24 @@ import dask.dataframe as dd
 import pandas as pd
 import numpy as np
 import fitting
+import argparse
+import matplotlib
+import matplotlib.pyplot as plt
 
+parser = argparse.ArgumentParser(description='Consolidate multiple parquet files into just one.')
+parser.add_argument('input_file', metavar='-i', type=str, nargs=1,
+                    help='input file for which you want some info/statistics')
 
-file = "/Users/jamesprince/Google Drive/Imperial/4/Project/data/2018-03-25.parquet"
+args = parser.parse_args()
+
+# file = "/Users/jamesprince/Google Drive/Imperial/4/Project/data/2018-03-25.parquet"
+file = args.input_file
 
 df = dd.read_parquet(file).compute()
 print(df['product_id'].unique())
 btc_usd_df = df[df['product_id'] == 'BTC-USD']
 
-print(btc_usd_df)
+# print(btc_usd_df)
 
 
 def total(df: dd) -> int:
@@ -66,6 +75,7 @@ def get_std_dev(col_name: str, df: dd) -> dd:
 
 
 def calculate_stats(df: dd) -> None:
+    """Calculate and print some statistics based on the """
     num_total_msgs = total(df)
     num_trades = get_num_reason('filled', df)
     num_cancel = get_num_reason('canceled', df)
@@ -137,7 +147,9 @@ def keep_3_std_dev(data: pd.Series) -> pd.Series:
 # num_total = total(df)
 # num_btc_usd = total(btc_usd_df)
 # print("percentage of orders of this market vs whole feed: " + str((100*num_btc_usd) / num_total) + "%")
-# calculate_stats(btc_usd_df)
+
+print("Stats for BTC-USD")
+calculate_stats(btc_usd_df)
 
 
 btc_usd_price_buy = pd.Series(get_side('buy', btc_usd_df)['price'].astype('float64').tolist())
@@ -145,3 +157,4 @@ btc_usd_price_sell = pd.Series(get_side('sell', btc_usd_df)['price'].astype('flo
 
 get_distribution(btc_usd_price_buy, 'BTC-USD buy side')
 get_distribution(btc_usd_price_sell, 'BTC-USD sell side')
+plt.show()
