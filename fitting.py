@@ -15,6 +15,10 @@ matplotlib.style.use('ggplot')
 # Create models from data
 def best_fit_distribution(data, bins=200, ax=None):
     """Model data by finding best fit distribution to data"""
+
+    # Strip NaNs
+    data = data.dropna()
+
     # Get histogram of original data
     y, x = np.histogram(data, bins=bins, density=True)
     x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -75,7 +79,8 @@ def best_fit_distribution(data, bins=200, ax=None):
         except Exception:
             pass
 
-    return best_distribution.name, best_params
+    return best_distribution, best_params
+
 
 def best_fit_params(data, distribution, bins=200, ax=None):
     """Model data by finding best fit params for a given distribution"""
@@ -144,27 +149,25 @@ def make_pdf(dist, params, size=10000):
     return pdf
 
 
-def best_fit_with_graphs(data, data_desc: str, bins=200, axes=None):
-    data = data.dropna()
-
+def best_fit_with_graphs(data, data_desc: str, xlabel: str, bins=200, axes=None):
     # Find best fit distribution
-    best_fit_name, best_fir_paramms = best_fit_distribution(data, 200)
-    best_dist = getattr(st, best_fit_name)
+    best_fit, best_fir_paramms = best_fit_distribution(data, bins)
+    best_dist = getattr(st, best_fit.name)
 
     # Make PDF
     pdf = make_pdf(best_dist, best_fir_paramms)
 
     # Display
     plt.figure(figsize=(12,8))
-    ax = pdf.plot(lw=2, label='PDF', legend=True)
-    data.plot(kind='hist', bins=50, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
+    ax = pdf.plot(lw=2, label='PDF', legend=True, ylim=(0,10))
+    data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
 
     param_names = (best_dist.shapes + ', loc, scale').split(', ') if best_dist.shapes else ['loc', 'scale']
     param_str = ', '.join(['{}={:0.2f}'.format(k,v) for k,v in zip(param_names, best_fir_paramms)])
-    dist_str = '{}({})'.format(best_fit_name, param_str)
+    dist_str = '{}({})'.format(best_fit.name, param_str)
 
     ax.set_title(data_desc + u' with best fit distribution \n' + dist_str)
-    ax.set_xlabel(u'Price ($)')
+    ax.set_xlabel(xlabel)
 
 
 # Example:
