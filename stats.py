@@ -1,4 +1,9 @@
 import dask.dataframe as dd
+import pandas as pd
+
+def keep_n_std_dev(data: pd.Series, n: int) -> pd.Series:
+    return data[~((data - data.mean()).abs() > n * data.std())]
+
 
 def get_side(side: str, df: dd) -> dd:
     return df[df['side'] == side]
@@ -12,10 +17,8 @@ def get_orders(df: dd) -> dd:
     return df[df['type'] == 'received']
 
 
-def cancellations(df: dd) -> int:
-    num_cancel = len(df[df['reason'] == 'canceled'])
-    print("number of cancellations: " + str(num_cancel))
-    return num_cancel
+def get_cancellations(df: dd) -> int:
+    return df[df['reason'] == 'canceled']
 
 
 def modifications(df: dd):
