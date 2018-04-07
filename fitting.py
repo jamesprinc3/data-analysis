@@ -25,7 +25,8 @@ def best_fit_distribution(data, bins=200, ax=None):
 
     # Distributions to check
     DISTRIBUTIONS = [
-        st.alpha,st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
+        #st.alpha,
+        st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
         st.dgamma,st.dweibull,st.erlang,st.expon,st.exponnorm,st.exponweib,st.exponpow,st.f,st.fatiguelife,st.fisk,
         st.foldcauchy,st.foldnorm,st.frechet_r,st.frechet_l,st.genlogistic,st.genpareto,st.gennorm,st.genexpon,
         st.genextreme,st.gausshyper,st.gamma,st.gengamma,st.genhalflogistic,st.gilbrat,st.gompertz,st.gumbel_r,
@@ -151,19 +152,19 @@ def make_pdf(dist, params, size=10000):
 
 def best_fit_with_graphs(data, data_desc: str, xlabel: str, bins=200, axes=None):
     # Find best fit distribution
-    best_fit, best_fir_paramms = best_fit_distribution(data, bins)
+    best_fit, best_fit_params = best_fit_distribution(data, bins)
     best_dist = getattr(st, best_fit.name)
 
     # Make PDF
-    pdf = make_pdf(best_dist, best_fir_paramms)
+    pdf = make_pdf(best_dist, best_fit_params)
 
     # Display
     plt.figure(figsize=(12,8))
-    ax = pdf.plot(lw=2, label='PDF', legend=True, ylim=(0,10))
+    ax = pdf.plot(lw=2, label='PDF', legend=True)
     data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
 
     param_names = (best_dist.shapes + ', loc, scale').split(', ') if best_dist.shapes else ['loc', 'scale']
-    param_str = ', '.join(['{}={:0.2f}'.format(k,v) for k,v in zip(param_names, best_fir_paramms)])
+    param_str = ', '.join(['{}={:0.2f}'.format(k,v) for k,v in zip(param_names, best_fit_params)])
     dist_str = '{}({})'.format(best_fit.name, param_str)
 
     ax.set_title(data_desc + u' with best fit distribution \n' + dist_str)

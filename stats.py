@@ -1,6 +1,13 @@
 import dask.dataframe as dd
 import pandas as pd
 
+
+def get_total(df: dd) -> int:
+    total = len(df.values)
+    print("number of rows: " + str(total))
+    return len(df.values)
+
+
 def keep_n_std_dev(data: pd.Series, n: int) -> pd.Series:
     return data[~((data - data.mean()).abs() > n * data.std())]
 
@@ -55,7 +62,7 @@ def get_buy_sell_ratio(df: dd) -> (float, float):
 
 def calculate_stats(df: dd) -> None:
     """Calculate and print some statistics based on the """
-    num_total_msgs = total(df)
+    num_total_msgs = get_total(df)
     num_trades = get_num_reason('filled', df)
     num_cancel = get_num_reason('canceled', df)
 

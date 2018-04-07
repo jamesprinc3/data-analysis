@@ -18,12 +18,6 @@ args = parser.parse_args()
 file = args.input_file
 
 
-def total(df: dd) -> int:
-    total = len(df.values)
-    print("number of rows: " + str(total))
-    return len(df.values)
-
-
 def sides(df: dd) -> (int, int):
     num_buys = len(df[df['side'] == 'sell'])
     num_sells = len(df[df['side'] == 'buy'])
