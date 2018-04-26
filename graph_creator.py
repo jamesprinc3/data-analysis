@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from distribution_fitter import DistributionFitter
-import stats
+from stats import Statistics
 
 
 class GraphCreator:
@@ -12,7 +12,7 @@ class GraphCreator:
         self.data_description = data_desc
 
     def graph_time_delta(self, orders_df: dd):
-        order_time_delta_df = orders_df['time'].apply(lambda x: selfdate_to_unix(x, 'ns') / 1e6).diff()
+        order_time_delta_df = orders_df['time'].apply(lambda x: self.date_to_unix(x, 'ns') / 1e6).diff()
         print(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
         self.get_distribution(cleaned_df, 'BTC-USD inter-order arrival times', 'inter order time (ms)', bins=100)
@@ -29,8 +29,8 @@ class GraphCreator:
         self.get_distribution(result, 'BTC-USD Trade Order Size', 'Trade Order Size')
 
     def graph_sides(self, df: dd, product: str) -> None:
-        btc_usd_price_buy = pd.Series(stats.get_side('buy', df)['price'].astype('float64').tolist())
-        btc_usd_price_sell = pd.Series(stats.get_side('sell', df)['price'].astype('float64').tolist())
+        btc_usd_price_buy = pd.Series(Statistics().get_side('buy', df)['price'].astype('float64').tolist())
+        btc_usd_price_sell = pd.Series(Statistics().get_side('sell', df)['price'].astype('float64').tolist())
 
         self.get_distribution(btc_usd_price_buy, product + ' buy side', 'Price ($)', bins=50)
         self.get_distribution(btc_usd_price_sell, product + ' sell side', 'Price ($)', bins=50)
@@ -50,7 +50,7 @@ class GraphCreator:
         plt.ylabel('Price ($)')
         plt.ylim(8000, 10000)
 
-        plt.title(self.data_description + 'price')
+        plt.title(self.data_description + ' price')
 
     # PRE: assume that the incoming df is either all trades or all orders (not sure the data will make much sense
     # otherwise
@@ -70,9 +70,9 @@ class GraphCreator:
     def get_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int=2):
         sample_size = 10000
 
-        data = stats.keep_n_std_dev(data, std_devs)
+        data = Statistics().keep_n_std_dev(data, std_devs)
         if len(data) > sample_size:
             data = data.sample(n=sample_size)
-        data = stats.keep_n_std_dev(data, std_devs)
+        data = Statistics().keep_n_std_dev(data, std_devs)
 
         DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)

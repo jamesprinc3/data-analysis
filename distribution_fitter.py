@@ -1,4 +1,4 @@
-# This file was taken from: https://stackoverflow.com/a/37616966
+# Some methods in this file were inspired by: https://stackoverflow.com/a/37616966
 
 import warnings
 import numpy as np

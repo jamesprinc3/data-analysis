@@ -10,12 +10,6 @@ class Statistics:
         """
 
     @staticmethod
-    def get_total(df: dd) -> int:
-        total = len(df.values)
-        print("number of rows: " + str(total))
-        return len(df.values)
-
-    @staticmethod
     def keep_n_std_dev(data: pd.Series, n: int) -> pd.Series:
         return data[~((data - data.mean()).abs() > n * data.std())]
 
@@ -68,7 +62,7 @@ class Statistics:
 
     def calculate_stats(self, df: dd) -> None:
         """Calculate and print some statistics based on the """
-        num_total_msgs = self.get_total(df)
+        num_total_msgs = get_total(df)
         num_trades = self.get_num_reason('filled', df)
         num_cancel = self.get_num_reason('canceled', df)
 
@@ -132,3 +126,9 @@ class Statistics:
         print("percentage of done messages: " + str((100 * num_done) / num_total_msgs) + "%")
         print("percentage of match messages: " + str((100 * num_match) / num_total_msgs) + "%")
         print("percentage of change messages: " + str((100 * num_change) / num_total_msgs) + "%")
+
+
+def get_total(df: dd) -> int:
+    total = len(df.values)
+    print("number of rows: " + str(total))
+    return len(df.values)
