@@ -5,8 +5,9 @@ import fitting
 import argparse
 import matplotlib
 import matplotlib.pyplot as plt
-import qqplot
+# import qqplot
 import stats
+import graphs
 
 parser = argparse.ArgumentParser(description='Consolidate multiple parquet files into just one.')
 parser.add_argument('input_file', metavar='-i', type=str, nargs=1,
@@ -40,24 +41,36 @@ input_df = dd.read_parquet(file).compute()
 # print(df)
 btc_usd_df = input_df[input_df['product_id'] == 'BTC-USD']
 
-# calculate_stats(btc_usd_df)
+# print(btc_usd_df)
 
+# trades = stats.get_trades(btc_usd_df)[['order_id', 'price']].dropna()
+# order_sizes = stats.get_orders(btc_usd_df)[['order_id', 'size']]
+# joined = trades.join(order_sizes.set_index('order_id'), how='inner', on='order_id')
+# print(trades)
+# print(order_sizes)
+# graphs.graph_price_quantity(joined)
+# plt.show()
+# stats.calculate_stats(btc_usd_df)
+#
 # graph_sides(btc_usd_df, "BTC-USD")
 btc_usd_price_buy = pd.Series(stats.get_side('buy', input_df)['price'].astype('float64').tolist())
 
 sample_size = 100
 std_devs = 3
 
-data = keep_n_std_dev(btc_usd_price_buy, std_devs)
+data = stats.keep_n_std_dev(btc_usd_price_buy, std_devs)
 if len(btc_usd_price_buy) > sample_size:
     data = btc_usd_price_buy.sample(n=sample_size)
 # btc_usd_price_buy = keep_n_std_dev(btc_usd_price_buy, std_devs)
-print("here")
+# print("here")
+#
+# theoretical, _ = fitting.best_fit_with_graphs(data, 200)
+#
+# print(theoretical)
+#
+# qqplot.plot(btc_usd_price_buy, theoretical)
+#
 
-theoretical, _ = fitting.best_fit_distribution(data, 200)
-
-print(theoretical)
-
-qqplot.plot(btc_usd_price_buy, theoretical)
+graphs.graph_price(stats.get_trades(btc_usd_df))
 
 plt.show()

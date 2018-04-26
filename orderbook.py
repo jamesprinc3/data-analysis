@@ -3,6 +3,7 @@ import dask.dataframe as dd
 import stats
 import graphs
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def reconstruct_orderbook(feed: dd, at: datetime.datetime) -> dd:
@@ -11,7 +12,7 @@ def reconstruct_orderbook(feed: dd, at: datetime.datetime) -> dd:
     valid_messages = feed[feed['time'] < at.isoformat()]
 
     trades = stats.get_trades(valid_messages)
-    # graphs.graph_trade_price(trades)
+    graphs.graph_price(trades)
     print("trade min: " + str(trades['price'].astype('float').min()))
     print("trade max: " + str(trades['price'].astype('float').max()))
     cancellations = stats.get_cancellations(valid_messages)
@@ -30,9 +31,16 @@ def reconstruct_orderbook(feed: dd, at: datetime.datetime) -> dd:
     return remaining_orders.reset_index(drop=True)
 
 
-file = "/Users/jamesprince/project-data/merge/00:02:48.142841.parquet"
+def orderbook_to_file(orderbook: pd.DataFrame, file_path: str):
+    orderbook.sort_values(by='price')
+    orderbook.to_csv(file_path)
 
-feed = dd.read_parquet(file)
+
+
+input_file = "/Users/jamesprince/project-data/merge/00:02:48.142841.parquet"
+output_file = "/Users/jamesprince/project-data/orderbook.csv"
+
+feed = dd.read_parquet(input_file)
 btc_usd_feed = feed[feed['product_id'] == 'BTC-USD'].reset_index(drop=True).compute()
 # print(btc_usd_feed)
 time = datetime.datetime.utcnow()
@@ -42,5 +50,8 @@ orderbook = reconstruct_orderbook(btc_usd_feed, time)
 
 graphs.graph_sides(orderbook, "BTC-USD")
 graphs.graph_order_sizes(orderbook)
+graphs.graph_price_quantity(orderbook)
+
+orderbook_to_file(orderbook, output_file)
 
 plt.show()

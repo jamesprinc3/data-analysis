@@ -10,13 +10,15 @@ import stats
 
 
 def graph_time_delta(orders_df: dd):
-    order_time_delta_df = pd.Series(orders_df['time'].apply(lambda x: date_to_unix(x, 'ns') / 1e6).diff())
-    get_distribution(order_time_delta_df, 'BTC-USD inter-order arrival times', 'inter order time (ms)', bins=100)
+    order_time_delta_df = orders_df['time'].apply(lambda x: date_to_unix(x, 'ns') / 1e6).diff()
+    print(order_time_delta_df)
+    cleaned_df = order_time_delta_df[order_time_delta_df != 0]
+    get_distribution(cleaned_df, 'BTC-USD inter-order arrival times', 'inter order time (ms)', bins=100)
 
 
 def graph_order_sizes(orders_df: dd):
     size_df = pd.Series(orders_df['size'].astype('float64').tolist())
-    get_distribution(size_df, 'BTC-USD Order size', 'Order Size', 200)
+    get_distribution(size_df, 'BTC-USD Order size', 'Order Size', 2000)
 
 
 def graph_trade_sizes(trades_df: dd):
@@ -27,11 +29,11 @@ def graph_trade_sizes(trades_df: dd):
     get_distribution(result, 'BTC-USD Trade Order Size', 'Trade Order Size')
 
 
-def graph_trade_price(trades_df: dd):
+def graph_price(df: dd):
     #
-    y = trades_df['price'].astype('float64').fillna(method='ffill')
+    y = df['price'].astype('float64').fillna(method='ffill')
     print(y)
-    x = trades_df['time'].astype('datetime64[ns]').apply(lambda x: date_to_unix(x, 'ns') / 1e6)
+    x = df['time'].astype('datetime64[ns]').apply(lambda x: date_to_unix(x, 'ns') / 1e6)
     print(x)
 
     plt.figure(figsize=(12, 8))
@@ -48,6 +50,7 @@ def graph_trade_price(trades_df: dd):
 
     plt.xlabel('Time (ns since epoch)')
     plt.ylabel('Price ($)')
+    plt.ylim(8000, 10000)
 
     # ax.set_title('BTC-USD trade price')
     # ax.set_xlabel('time')
@@ -59,6 +62,15 @@ def graph_sides(df: dd, product: str) -> None:
 
     get_distribution(btc_usd_price_buy, product + ' buy side', 'Price ($)', bins=50)
     get_distribution(btc_usd_price_sell, product + ' sell side', 'Price ($)', bins=50)
+
+
+# PRE: assume that the incoming df is either all trades or all orders (not sure the data will make much sense otherwise
+def graph_price_quantity(df: dd) -> None:
+    prices = df['price'].astype('float64').tolist()
+    quantities = df['size'].astype('float64').tolist()
+
+    plt.figure(figsize=(12, 8))
+    plt.scatter(prices, quantities, marker='+')
 
 
 def date_to_unix(s, unit: str):

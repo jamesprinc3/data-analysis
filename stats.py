@@ -24,7 +24,7 @@ def get_orders(df: dd) -> dd:
     return df[df['type'] == 'received']
 
 
-def get_cancellations(df: dd) -> int:
+def get_cancellations(df: dd) -> dd:
     return df[df['reason'] == 'canceled']
 
 
@@ -88,11 +88,14 @@ def calculate_stats(df: dd) -> None:
     avg_price = df['price'].astype('float64').mean()
     std_dev_price = df['price'].astype('float64').std()
 
-    avg_sell_price = get_mean('price', get_side('sell', df))
+    avg_sell_order_price = get_mean('price', get_side('sell', df))
     std_dev_sell_price = get_std_dev('price', get_side('sell', df))
 
     avg_buy_price = get_mean('price', get_side('buy', df))
-    std_dev_buy_price = get_std_dev('price', get_side('buy', df))
+    std_dev_buy_order_price = get_std_dev('price', get_side('buy', df))
+
+    avg_trade_price = get_mean('price', get_trades(df))
+    std_dev_trade_price = get_std_dev('price', get_trades(df))
 
     print("average order size: " + str(avg_order_size))
     print("std. dev. of order size: " + str(std_dev_order_size))
@@ -106,11 +109,14 @@ def calculate_stats(df: dd) -> None:
     print("average price: " + str(avg_price))
     print("std. dev. of price: " + str(std_dev_price))
 
-    print("average sell price: " + str(avg_sell_price))
-    print("std. dev. of sell price: " + str(std_dev_sell_price))
+    print("average sell order price: " + str(avg_sell_order_price))
+    print("std. dev. of sell order price: " + str(std_dev_sell_price))
 
-    print("average buy price: " + str(avg_buy_price))
-    print("std. dev. of buy price: " + str(std_dev_buy_price))
+    print("average buy order price: " + str(avg_buy_price))
+    print("std. dev. of buy order price: " + str(std_dev_buy_order_price))
+
+    print("average trade price: " + str(avg_trade_price))
+    print("std. dev. of trade price: " + str(std_dev_trade_price))
 
     print("percentage of orders canceled: " + str((100*num_cancel) / num_received) + "%")
     print("percentage of orders filled: " + str((100*num_trades) / num_received) + "%")
@@ -120,3 +126,4 @@ def calculate_stats(df: dd) -> None:
     print("percentage of done messages: " + str((100*num_done) / num_total_msgs) + "%")
     print("percentage of match messages: " + str((100*num_match) / num_total_msgs) + "%")
     print("percentage of change messages: " + str((100*num_change) / num_total_msgs) + "%")
+
