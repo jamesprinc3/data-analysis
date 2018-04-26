@@ -1,13 +1,11 @@
-import dask.dataframe as dd
-import pandas as pd
-import numpy as np
-import fitting
 import argparse
-import matplotlib
+
+import dask.dataframe as dd
 import matplotlib.pyplot as plt
-# import qqplot
+import pandas as pd
+
+import graph_creator
 import stats
-import graphs
 
 parser = argparse.ArgumentParser(description='Consolidate multiple parquet files into just one.')
 parser.add_argument('input_file', metavar='-i', type=str, nargs=1,
@@ -71,6 +69,6 @@ if len(btc_usd_price_buy) > sample_size:
 # qqplot.plot(btc_usd_price_buy, theoretical)
 #
 
-graphs.graph_price(stats.get_trades(btc_usd_df))
+graph_creator.graph_price(stats.get_trades(btc_usd_df))
 
 plt.show()
