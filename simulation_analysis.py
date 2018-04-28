@@ -16,7 +16,7 @@ class SimulationAnalysis:
         self.graph_creator = GraphCreator(data_desc)
 
     def analyse(self):
-        for directory in self.dirs[0]:
+        for directory in self.dirs:
             orders_path: str = self.data_root + directory + "/orders.csv"
             trades_path: str = self.data_root + directory + "/trades.csv"
 
@@ -24,11 +24,12 @@ class SimulationAnalysis:
             # graphs.graph_order_sizes(orders_df)
 
             trades_df = pd.read_csv(trades_path)
-            self.graph_creator.graph_price(trades_df)
-
-            orders_df = pd.read_csv(orders_path)
-            self.graph_creator.graph_price(orders_df)
+            self.graph_creator.graph_price_time(trades_df)
+            #
+            # orders_df = pd.read_csv(orders_path)
+            # self.graph_creator.graph_price(orders_df)
 
             # graphs.graph_price_quantity(trades_df)
 
         plt.show()
+

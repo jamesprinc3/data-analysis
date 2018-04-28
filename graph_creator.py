@@ -7,7 +7,6 @@ from stats import Statistics
 
 
 class GraphCreator:
-
     def __init__(self, data_desc: str):
         self.data_description = data_desc
 
@@ -28,25 +27,68 @@ class GraphCreator:
         result = pd.Series(joined.dropna(axis=0, how='any').reset_index(drop=True)['size'].astype('float64').tolist())
         self.get_distribution(result, 'BTC-USD Trade Order Size', 'Trade Order Size')
 
-    def graph_sides(self, df: dd, product: str) -> None:
+    def graph_sides(self, df: dd) -> None:
         btc_usd_price_buy = pd.Series(Statistics().get_side('buy', df)['price'].astype('float64').tolist())
         btc_usd_price_sell = pd.Series(Statistics().get_side('sell', df)['price'].astype('float64').tolist())
 
-        self.get_distribution(btc_usd_price_buy, product + ' buy side', 'Price ($)', bins=50)
-        self.get_distribution(btc_usd_price_sell, product + ' sell side', 'Price ($)', bins=50)
+        self.get_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
+        self.get_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
 
-    def graph_price(self, df: dd):
+    def format_orders(self, orders: dd, price_over_time: dd):
+        orders['price'] = orders['price'].astype('float64')
+        orders['time'] = orders['time'].astype('datetime64')
+
+        price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
+
+        print("orders\n")
+        print(orders)
+        print("price over time\n")
+        print(price_over_time)
+
+        # B1 = orders.set_index('time').reindex(price_over_time.index, method='nearest').reset_index()
+        joined = orders.join(price_over_time, on='time').fillna(method='ffill')
+        print(joined)
+
+        joined['relative_price'] = joined.apply(lambda row: float(row['price']) - float(row['most_recent_trade_price']),
+                                                axis=1)
+
+        return joined
+
+    # TODO: calculate price % difference (so that we can compare these distributions between currencies or points in time where the price is very different
+    def graph_order_relative_price_distribution(self, feed_df: dd):
+        price_over_time: dd = Statistics().get_price_over_time(feed_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
+        price_over_time.index = price_over_time.index.astype('datetime64')
+
+        orders = Statistics.get_orders(feed_df)
+
+        buy_orders = Statistics().get_side("buy", orders)
+        buy_orders = self.format_orders(buy_orders, price_over_time)
+
+        sell_orders = Statistics().get_side("sell", orders)
+        sell_orders = self.format_orders(sell_orders, price_over_time)
+
+        # Graphing
+        plt.figure(figsize=(12, 8))
+
+        self.get_distribution(buy_orders['relative_price'], "BTC-USD, Buy Side", "Price relative to most recent trade")
+        self.get_distribution(sell_orders['relative_price'], "BTC-USD, Sell Side", "Price relative to most recent trade")
+
+    def graph_price_time(self, df: dd):
         #
         y = df['price'].astype('float64').fillna(method='ffill')
         print(y)
-        x = df['time'].astype('datetime64[ns]').apply(lambda x: self.date_to_unix(x, 'ns') / 1e6)
-        print(x)
+        print(df['time'].astype('datetime64[ns]'))
+        times = df['time'].astype('datetime64[ns]').apply(lambda x: self.date_to_unix(x, 'ns'))
+        start_time = times.min()
+        print("start_time " + str(start_time))
+        x = times.apply(lambda z: (z - start_time) / 1e6)
+        # print(x)
 
         plt.figure(figsize=(12, 8))
 
         plt.plot(x, y, 'r+')
 
-        plt.xlabel('Time (ns since epoch)')
+        plt.xlabel('Time (ms)')
         plt.ylabel('Price ($)')
         plt.ylim(8000, 10000)
 
@@ -67,7 +109,7 @@ class GraphCreator:
         return pd.to_datetime(s, unit=unit).value
 
     @staticmethod
-    def get_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int=2):
+    def get_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int = 2):
         sample_size = 10000
 
         data = Statistics().keep_n_std_dev(data, std_devs)

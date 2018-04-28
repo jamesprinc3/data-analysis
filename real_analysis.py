@@ -25,7 +25,12 @@ class RealAnalysis():
             data = btc_usd_price_buy.sample(n=sample_size)
 
         # TODO: replace this with real data_description
-        GraphCreator("BTC-USD trades").graph_price(Statistics.get_trades(btc_usd_df))
+        graph_creator = GraphCreator("BTC-USD trades")
+
+        # graph_creator.graph_price_time(Statistics.get_trades(btc_usd_df))
+        # graph_creator.graph_sides(Statistics.get_orders(btc_usd_df))
+        # Statistics().get_price_over_time(btc_usd_df)
+        GraphCreator("BTC-USD").graph_order_relative_price_distribution(btc_usd_df)
 
         plt.show()
 
