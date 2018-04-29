@@ -60,13 +60,14 @@ class Statistics:
 
         return buy_ratio, sell_ratio
 
-    def get_price_over_time(self, df:dd) -> pd.DataFrame:
-        trades = self.get_trades(df).reset_index(drop=True)
-        price_times = trades[['time', 'price']].dropna()
-        price_times.rename(index=str, columns={"price": "most_recent_trade_price"}, inplace=True)
-        print(price_times)
-        price_times['most_recent_trade_price'] = price_times['most_recent_trade_price'].astype('float64')
-        return price_times.drop_duplicates()
+    @staticmethod
+    def get_price_over_time(trades_df: dd) -> pd.DataFrame:
+        trades_df = trades_df.reset_index(drop=True)
+        price_times_df = trades_df[['time', 'price']].dropna()
+        price_times_df.rename(index=str, columns={"price": "most_recent_trade_price"}, inplace=True)
+        print(price_times_df)
+        price_times_df['most_recent_trade_price'] = price_times_df['most_recent_trade_price'].astype('float64')
+        return price_times_df.drop_duplicates()
 
     def calculate_stats(self, df: dd) -> None:
         """Calculate and print some statistics based on the data"""

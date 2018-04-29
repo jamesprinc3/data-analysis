@@ -16,18 +16,27 @@ class SimulationAnalysis:
         self.graph_creator = GraphCreator(data_desc)
 
     def analyse(self):
+        print(self.dirs)
         for directory in self.dirs:
             orders_path: str = self.data_root + directory + "/orders.csv"
             trades_path: str = self.data_root + directory + "/trades.csv"
+            cancels_path: str = self.data_root + directory + "/cancels.csv"
 
-            # orders_df = pd.read_csv(order_path)
-            # graphs.graph_order_sizes(orders_df)
-
-            trades_df = pd.read_csv(trades_path)
-            self.graph_creator.graph_price_time(trades_df)
+            orders_df = pd.read_csv(orders_path)
+            # self.graph_creator.graph_order_sizes(orders_df)
+            # self.graph_creator.graph_price_quantity(orders_df)
+            # self.graph_creator.graph_price_time(orders_df)
+            self.graph_creator.graph_time_delta(orders_df)
             #
-            # orders_df = pd.read_csv(orders_path)
-            # self.graph_creator.graph_price(orders_df)
+            trades_df = pd.read_csv(trades_path)
+            # self.graph_creator.graph_price_time(trades_df)
+
+            # cancels_df = pd.read_csv(cancels_path)
+            # print("cancels df")
+            # print(cancels_df)
+            # self.graph_creator.graph_relative_price_distribution(trades_df, cancels_df, 20)
+
+
 
             # graphs.graph_price_quantity(trades_df)
 

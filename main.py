@@ -26,6 +26,7 @@ if __name__ == "__main__":
         RealAnalysis(real_data_file_path, "BTC-USD").task()
 
     if sim_data_file_path:
+        print("here")
         SimulationAnalysis(sim_data_file_path, "BTC-USD").analyse()
 
 

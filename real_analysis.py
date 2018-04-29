@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-class RealAnalysis():
+class RealAnalysis:
 
     def __init__(self, file_path, data_description):
         self.file_path = file_path
@@ -27,10 +27,20 @@ class RealAnalysis():
         # TODO: replace this with real data_description
         graph_creator = GraphCreator("BTC-USD trades")
 
+        orders_df = Statistics.get_orders(btc_usd_df)
+
         # graph_creator.graph_price_time(Statistics.get_trades(btc_usd_df))
+        # graph_creator.graph_order_sizes(orders_df)
+        # graph_creator.graph_price_quantity(orders_df)
+        graph_creator.graph_time_delta(orders_df)
+
+        # graph_creator.graph_order_cancel_relative_price_distribution(btc_usd_df)
+
+
         # graph_creator.graph_sides(Statistics.get_orders(btc_usd_df))
         # Statistics().get_price_over_time(btc_usd_df)
-        GraphCreator("BTC-USD").graph_order_relative_price_distribution(btc_usd_df)
+        # graph_creator.graph_order_relative_price_distribution(btc_usd_df)
+        # graph_creator.graph_time_delta(Statistics.get_orders(btc_usd_df))
 
         plt.show()
 
