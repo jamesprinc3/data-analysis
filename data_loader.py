@@ -13,24 +13,35 @@ class DataLoader:
 
         return df
 
-    def load_sim_data(self, root) -> (dd, dd, dd):
+    def load_sim_data(self, root, start_index=0, end_index=1) -> (dd, dd, dd):
+        """
+
+        :param root: directory that contains the output from OrderBookSimulator
+        :param start_index: the (inclusive) index we wish to start from
+        :param end_index: the (exclusive) index we wish to end on
+        :return:
+        """
         data_root = root
         dirs = next(os.walk(data_root))[1]
 
         # TODO: figure out what we want to do for multiple simulations!
         # for directory in dirs:
-        directory = dirs[0]
-        orders_path: str = data_root + directory + "/orders.csv"
-        trades_path: str = data_root + directory + "/trades.csv"
-        cancels_path: str = data_root + directory + "/cancels.csv"
+        dirs_to_load = dirs[start_index:end_index]
+        return_list = []
+        for directory in dirs_to_load:
+            orders_path: str = data_root + directory + "/orders.csv"
+            trades_path: str = data_root + directory + "/trades.csv"
+            cancels_path: str = data_root + directory + "/cancels.csv"
 
-        print(orders_path)
+            print(orders_path)
 
-        orders_dd = self.format_dd(dd.read_csv(orders_path))
-        trades_dd = self.format_dd(dd.read_csv(trades_path))
-        cancels_dd = self.format_dd(dd.read_csv(cancels_path))
+            orders_dd = self.format_dd(dd.read_csv(orders_path))
+            trades_dd = self.format_dd(dd.read_csv(trades_path))
+            cancels_dd = self.format_dd(dd.read_csv(cancels_path))
 
-        return orders_dd, trades_dd, cancels_dd
+            return_list.append((orders_dd, trades_dd, cancels_dd))
+
+        return return_list
 
     def load_real_data(self, path) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""

@@ -3,8 +3,10 @@ import logging
 from logging.config import fileConfig
 
 import dask.dataframe as dd
-from real_analysis import RealAnalysis
-from simulation_analysis import SimulationAnalysis
+
+from analysis.real_analysis import RealAnalysis
+from analysis.simulation_analysis import SimulationAnalysis
+from analysis.combined_analysis import CombinedAnalysis
 
 if __name__ == "__main__":
     fileConfig('logging_config.ini')
@@ -15,19 +17,29 @@ if __name__ == "__main__":
     parser.add_argument('--real_data', metavar='-rd', type=str, nargs='?',
                         help='file path to real data for which you want some info/statistics')
     parser.add_argument('--sim_data', metavar='-sd', type=str, nargs='?',
-                        help='file path to simulation data for which you want some info/statistics')
+                        help='file path to the root of simulation data for which you want some info/statistics')
+    parser.add_argument('--combined', metavar='y/n', type=str, nargs='?',
+                        help='(default no) boolean of whether to include combined analysis')
     parser.print_help()
 
     args = parser.parse_args()
     real_data_file_path = args.real_data
     sim_data_file_path = args.sim_data
+    combined = args.combined
 
-    if real_data_file_path:
-        RealAnalysis(real_data_file_path, "BTC-USD").task()
+    # if real_data_file_path:
+    #     RealAnalysis(real_data_file_path, "BTC-USD").task()
+    #
+    # if sim_data_file_path:
+    #     SimulationAnalysis(sim_data_file_path, "BTC-USD").analyse()
 
-    if sim_data_file_path:
-        print("here")
-        SimulationAnalysis(sim_data_file_path, "BTC-USD").analyse()
+    print(combined)
+    print(sim_data_file_path)
+
+    if combined == "y" and sim_data_file_path and real_data_file_path:
+        CombinedAnalysis(sim_data_file_path, real_data_file_path).graph_real_prices_with_simulated_confidence_intervals()
+
+
 
 
 def sides(df: dd) -> (int, int):
