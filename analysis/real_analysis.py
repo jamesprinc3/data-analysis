@@ -1,10 +1,12 @@
-import dask.dataframe as dd
-from stats import Statistics
-from graph_creator import GraphCreator
-import pandas as pd
+from typing import List
+
 import matplotlib.pyplot as plt
-from data_splitter import DataSplitter
+
 from data_loader import DataLoader
+from data_splitter import DataSplitter
+from graph_creator import GraphCreator
+from stats import Statistics
+from data_utils import DataUtils
 
 
 class RealAnalysis:
@@ -61,6 +63,13 @@ class RealAnalysis:
 
         plt.show()
 
+    def get_prices_at_times(self, seconds_list: List[int]):
+        input_dd = DataLoader().load_real_data(self.file_path)
+        btc_usd_dd = input_dd[input_dd['product_id'] == 'BTC-USD']
+
+        trades_df = btc_usd_dd.compute()
+
+        map(lambda x: DataUtils.get_last_price_before(trades_df, x), seconds_list)
 
     # num_total = total(df)
     # num_btc_usd = total(btc_usd_df)
