@@ -10,10 +10,6 @@ class Statistics:
         """
 
     @staticmethod
-    def keep_n_std_dev(data: pd.Series, n: int) -> pd.Series:
-        return data[~((data - data.mean()).abs() > n * data.std())]
-
-    @staticmethod
     def get_side(side: str, df: dd) -> dd:
         return df[df['side'] == side]
 
@@ -60,16 +56,16 @@ class Statistics:
 
         return buy_ratio, sell_ratio
 
+    # PRE: df must be trades only
     @staticmethod
     def get_price_over_time(trades_df: dd) -> pd.DataFrame:
-        trades_df = trades_df.reset_index(drop=True)
         price_times_df = trades_df[['time', 'price']].dropna()
         price_times_df.rename(index=str, columns={"price": "most_recent_trade_price"}, inplace=True)
         print(price_times_df)
         price_times_df['most_recent_trade_price'] = price_times_df['most_recent_trade_price'].astype('float64')
         return price_times_df.drop_duplicates()
 
-    def calculate_stats(self, df: dd) -> None:
+    def calculate_feed_stats(self, df: dd) -> None:
         """Calculate and print some statistics based on the data"""
         num_total_msgs = get_total(df)
         num_trades = self.get_num_reason('filled', df)
@@ -80,7 +76,25 @@ class Statistics:
         num_done = self.get_num_type('done', df)
         num_match = self.get_num_type('match', df)
         num_change = self.get_num_type('change', df)
-        # sides(df)
+
+        avg_trade_price = self.get_mean('price', self.get_trades(df))
+        std_dev_trade_price = self.get_std_dev('price', self.get_trades(df))
+
+        print("percentage of received messages: " + str((100 * num_received) / num_total_msgs) + "%")
+        print("percentage of open messages: " + str((100 * num_open) / num_total_msgs) + "%")
+        print("percentage of done messages: " + str((100 * num_done) / num_total_msgs) + "%")
+        print("percentage of match messages: " + str((100 * num_match) / num_total_msgs) + "%")
+        print("percentage of change messages: " + str((100 * num_change) / num_total_msgs) + "%")
+
+        print("percentage of orders canceled: " + str((100 * num_cancel) / num_received) + "%")
+        print("percentage of orders filled: " + str((100 * num_trades) / num_received) + "%")
+
+        print("average trade price: " + str(avg_trade_price))
+        print("std. dev. of trade price: " + str(std_dev_trade_price))
+
+        self.calculate_stats(df)
+
+    def calculate_stats(self, df:dd) -> None:
 
         buy_ratio, sell_ratio = self.get_buy_sell_ratio(df)
         print("Ratio (buy/sell): " + str(buy_ratio) + ":" + str(sell_ratio))
@@ -103,9 +117,6 @@ class Statistics:
         avg_buy_price = self.get_mean('price', self.get_side('buy', df))
         std_dev_buy_order_price = self.get_std_dev('price', self.get_side('buy', df))
 
-        avg_trade_price = self.get_mean('price', self.get_trades(df))
-        std_dev_trade_price = self.get_std_dev('price', self.get_trades(df))
-
         print("average order size: " + str(avg_order_size))
         print("std. dev. of order size: " + str(std_dev_order_size))
 
@@ -124,17 +135,7 @@ class Statistics:
         print("average buy order price: " + str(avg_buy_price))
         print("std. dev. of buy order price: " + str(std_dev_buy_order_price))
 
-        print("average trade price: " + str(avg_trade_price))
-        print("std. dev. of trade price: " + str(std_dev_trade_price))
 
-        print("percentage of orders canceled: " + str((100 * num_cancel) / num_received) + "%")
-        print("percentage of orders filled: " + str((100 * num_trades) / num_received) + "%")
-
-        print("percentage of received messages: " + str((100 * num_received) / num_total_msgs) + "%")
-        print("percentage of open messages: " + str((100 * num_open) / num_total_msgs) + "%")
-        print("percentage of done messages: " + str((100 * num_done) / num_total_msgs) + "%")
-        print("percentage of match messages: " + str((100 * num_match) / num_total_msgs) + "%")
-        print("percentage of change messages: " + str((100 * num_change) / num_total_msgs) + "%")
 
 
 def get_total(df: dd) -> int:

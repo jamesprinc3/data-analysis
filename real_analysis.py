@@ -3,6 +3,8 @@ from stats import Statistics
 from graph_creator import GraphCreator
 import pandas as pd
 import matplotlib.pyplot as plt
+from data_splitter import DataSplitter
+from data_loader import DataLoader
 
 
 class RealAnalysis:
@@ -11,36 +13,51 @@ class RealAnalysis:
         self.file_path = file_path
         self.data_description = data_description
 
+    @staticmethod
+    def secs_to_nanos(secs) -> int:
+        return secs * 10**9
+
     def task(self):
-        input_df = dd.read_parquet(self.file_path).compute()
-        btc_usd_df = input_df[input_df['product_id'] == 'BTC-USD']
+        input_dd = DataLoader().load_real_data(self.file_path)
+        btc_usd_dd = input_dd[input_dd['product_id'] == 'BTC-USD']
 
-        btc_usd_price_buy = pd.Series(Statistics.get_side('buy', input_df)['price'].astype('float64').tolist())
+        # btc_usd_price_buy = pd.Series(Statistics.get_side('buy', input_dd)['price'].astype('float64').tolist())
+        #
+        # sample_size = 100
+        # std_devs = 3
 
-        sample_size = 100
-        std_devs = 3
-
-        data = Statistics.keep_n_std_dev(btc_usd_price_buy, std_devs)
-        if len(btc_usd_price_buy) > sample_size:
-            data = btc_usd_price_buy.sample(n=sample_size)
+        # data = Statistics.keep_n_std_dev(btc_usd_price_buy, std_devs)
+        # if len(btc_usd_price_buy) > sample_size:
+        #     data = btc_usd_price_buy.sample(n=sample_size)
 
         # TODO: replace this with real data_description
-        graph_creator = GraphCreator("BTC-USD trades")
+        graph_creator = GraphCreator("Real BTC-USD")
+        num_seconds = 10
 
-        orders_df = Statistics.get_orders(btc_usd_df)
+        orders_df = Statistics.get_orders(btc_usd_dd).compute()
+        orders_df = DataSplitter.get_first_n_nanos(orders_df, self.secs_to_nanos(num_seconds))
+        graph_creator.graph_price_time(orders_df, "orders")
+        # Statistics().calculate_feed_stats(orders_df)
+
 
         # graph_creator.graph_price_time(Statistics.get_trades(btc_usd_df))
         # graph_creator.graph_order_sizes(orders_df)
         # graph_creator.graph_price_quantity(orders_df)
-        graph_creator.graph_time_delta(orders_df)
+        # graph_creator.graph_time_delta(orders_df)
 
         # graph_creator.graph_order_cancel_relative_price_distribution(btc_usd_df)
 
+        trades_df = Statistics.get_trades(btc_usd_dd).compute()
+
+        trades_df = DataSplitter.get_first_n_nanos(trades_df, self.secs_to_nanos(num_seconds))
+        graph_creator.graph_price_time(trades_df, "trades")
 
         # graph_creator.graph_sides(Statistics.get_orders(btc_usd_df))
         # Statistics().get_price_over_time(btc_usd_df)
         # graph_creator.graph_order_relative_price_distribution(btc_usd_df)
         # graph_creator.graph_time_delta(Statistics.get_orders(btc_usd_df))
+
+        graph_creator.graph_relative_price_distribution(trades_df, orders_df, 100)
 
         plt.show()
 

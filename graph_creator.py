@@ -15,18 +15,18 @@ class GraphCreator:
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
         print(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
-        self.get_distribution(cleaned_df, 'BTC-USD inter-order arrival times', 'inter order time (ms)', bins=100)
+        self.get_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
 
     def graph_order_sizes(self, orders_df: dd):
         size_df = pd.Series(orders_df['size'].astype('float64').tolist())
-        self.get_distribution(size_df, 'BTC-USD Order size', 'Order Size', 10)
+        self.get_distribution(size_df, self.data_description + ' Order size', 'Order Size', 10)
 
     def graph_trade_sizes(self, trades_df: dd):
         order_id_map = trades_df[['order_id', 'size']].drop_duplicates()
         traded_order_id_set = pd.DataFrame(trades_df['order_id'].unique(), columns=['order_id'])
         joined = order_id_map.join(traded_order_id_set.set_index('order_id'), on='order_id', how='inner')
         result = pd.Series(joined.dropna(axis=0, how='any').reset_index(drop=True)['size'].astype('float64').tolist())
-        self.get_distribution(result, 'BTC-USD Trade Order Size', 'Trade Order Size')
+        self.get_distribution(result, self.data_description + ' Trade Order Size', 'Trade Order Size')
 
     def graph_sides(self, df: dd) -> None:
         btc_usd_price_buy = pd.Series(Statistics().get_side('buy', df)['price'].astype('float64').tolist())
@@ -37,7 +37,7 @@ class GraphCreator:
 
     def format_orders(self, orders: dd, price_over_time: dd):
         orders['price'] = orders['price'].astype('float64')
-        orders['time'] = orders['time'].astype('datetime64')
+        orders['time'] = orders['time'].astype('datetime64[ns]')
 
         price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
 
@@ -64,7 +64,6 @@ class GraphCreator:
 
     def graph_relative_price_distribution(self, trades_df: dd, other_df: dd, num_bins=100):
         price_over_time: dd = Statistics().get_price_over_time(trades_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
-        price_over_time.index = price_over_time.index.astype('datetime64')
 
         buy_df = Statistics().get_side("buy", other_df)
         print("buy_df")
@@ -79,10 +78,10 @@ class GraphCreator:
         # Graphing
         plt.figure(figsize=(12, 8))
 
-        self.get_distribution(buy_df['relative_price'], "BTC-USD, Buy Side", "Price relative to most recent trade", bins=num_bins)
-        self.get_distribution(sell_df['relative_price'], "BTC-USD, Sell Side", "Price relative to most recent trade", bins=num_bins)
+        self.get_distribution(buy_df['relative_price'], self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
+        self.get_distribution(sell_df['relative_price'], self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
 
-    def graph_price_time(self, df: dd):
+    def graph_price_time(self, df: dd, data_desc: str):
         #
         y = df['price'].astype('float64').fillna(method='ffill')
         print(y)
@@ -99,9 +98,9 @@ class GraphCreator:
 
         plt.xlabel('Time (ms)')
         plt.ylabel('Price ($)')
-        # plt.ylim(8400, 8600)
+        plt.ylim(7000, 10000)
 
-        plt.title(self.data_description + ' price')
+        plt.title(self.data_description + " " + data_desc + ' price')
 
     def graph_order_cancel_relative_price_distribution(self, feed_df):
         trades_df = Statistics.get_trades(feed_df)
@@ -148,9 +147,9 @@ class GraphCreator:
     def get_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int = 2):
         sample_size = 10000
 
-        data = Statistics().keep_n_std_dev(data, std_devs)
+        data = DataUtils().keep_n_std_dev(data, std_devs)
         if len(data) > sample_size:
             data = data.sample(n=sample_size)
-        data = Statistics().keep_n_std_dev(data, std_devs)
+        data = DataUtils().keep_n_std_dev(data, std_devs)
 
         DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)
