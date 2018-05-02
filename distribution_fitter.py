@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 
 class DistributionFitter:
-
     def __init__(self):
         matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
         matplotlib.style.use('ggplot')
@@ -41,7 +40,7 @@ class DistributionFitter:
         #     st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
         # ]
 
-        DISTRIBUTIONS = [st.expon, st.poisson, st.loggamma, st.lognorm]
+        DISTRIBUTIONS = [st.expon, st.poisson, st.lognorm] #st.loggamma,
 
         # Best holders
         best_distribution = st.norm
@@ -155,7 +154,9 @@ class DistributionFitter:
     def best_fit_with_graphs(self, data, data_desc: str, xlabel: str, bins=200, axes=None):
         # Find best fit distribution
         best_fit, best_fit_params = self.best_fit_distribution(data, bins)
-        best_dist = getattr(st, best_fit.name)
+
+        # Get the name and params of the best fit
+        best_dist, dist_str = self.get_distribution_string(best_fit, best_fit_params)
 
         # Make PDF
         pdf = self.make_pdf(best_dist, best_fit_params)
@@ -165,9 +166,17 @@ class DistributionFitter:
         ax = pdf.plot(lw=2, label='PDF', legend=True)
         data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
 
+        ax.set_title(data_desc + u' with best fit distribution \n' + dist_str)
+        ax.set_xlabel(xlabel)
+
+    @staticmethod
+    def get_distribution_string(best_fit, best_fit_params):
+        # Extract name of best fit distribution
+        best_dist = getattr(st, best_fit.name)
+
+        # Format the name
         param_names = (best_dist.shapes + ', loc, scale').split(', ') if best_dist.shapes else ['loc', 'scale']
         param_str = ', '.join(['{}={:0.2f}'.format(k, v) for k, v in zip(param_names, best_fit_params)])
         dist_str = '{}({})'.format(best_fit.name, param_str)
 
-        ax.set_title(data_desc + u' with best fit distribution \n' + dist_str)
-        ax.set_xlabel(xlabel)
+        return best_dist, dist_str

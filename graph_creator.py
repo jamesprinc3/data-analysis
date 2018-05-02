@@ -15,26 +15,27 @@ class GraphCreator:
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
         print(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
-        self.get_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
+        self.graph_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
 
     def graph_order_sizes(self, orders_df: dd):
         size_df = pd.Series(orders_df['size'].astype('float64').tolist())
-        self.get_distribution(size_df, self.data_description + ' Order size', 'Order Size', 10)
+        self.graph_distribution(size_df, self.data_description + ' Order size', 'Order Size', 10)
 
     def graph_trade_sizes(self, trades_df: dd):
         order_id_map = trades_df[['order_id', 'size']].drop_duplicates()
         traded_order_id_set = pd.DataFrame(trades_df['order_id'].unique(), columns=['order_id'])
         joined = order_id_map.join(traded_order_id_set.set_index('order_id'), on='order_id', how='inner')
         result = pd.Series(joined.dropna(axis=0, how='any').reset_index(drop=True)['size'].astype('float64').tolist())
-        self.get_distribution(result, self.data_description + ' Trade Order Size', 'Trade Order Size')
+        self.graph_distribution(result, self.data_description + ' Trade Order Size', 'Trade Order Size')
 
     def graph_sides(self, df: dd) -> None:
         btc_usd_price_buy = pd.Series(Statistics().get_side('buy', df)['price'].astype('float64').tolist())
         btc_usd_price_sell = pd.Series(Statistics().get_side('sell', df)['price'].astype('float64').tolist())
 
-        self.get_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
-        self.get_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
+        self.graph_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
+        self.graph_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
 
+    # TODO: REFACTOR (mostly replaced by data_utils.join_orders() )
     def format_orders(self, orders: dd, price_over_time: dd):
         orders['price'] = orders['price'].astype('float64')
         orders['time'] = orders['time'].astype('datetime64[ns]')
@@ -66,8 +67,6 @@ class GraphCreator:
         price_over_time: dd = Statistics().get_price_over_time(trades_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
 
         buy_df = Statistics().get_side("buy", other_df)
-        print("buy_df")
-        print(buy_df)
         buy_df = self.format_orders(buy_df, price_over_time)
         # Flip the distribution around so that we can actually fit it to something breeze can sample from
         buy_df['relative_price'] = buy_df['relative_price'].apply(lambda x: -x)
@@ -78,8 +77,8 @@ class GraphCreator:
         # Graphing
         plt.figure(figsize=(12, 8))
 
-        self.get_distribution(buy_df['relative_price'], self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
-        self.get_distribution(sell_df['relative_price'], self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
+        self.graph_distribution(buy_df['relative_price'], self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
+        self.graph_distribution(sell_df['relative_price'], self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
 
     def graph_price_time(self, df: dd, data_desc: str):
         #
@@ -143,8 +142,9 @@ class GraphCreator:
     def date_to_unix(s, unit: str):
         return pd.to_datetime(s, unit=unit).value
 
+    # TODO: REFACTOR (mostly replaced by data_utils.remove_tails() )
     @staticmethod
-    def get_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int = 2):
+    def graph_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int = 2):
         sample_size = 10000
 
         data = DataUtils().keep_n_std_dev(data, std_devs)

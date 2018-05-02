@@ -48,8 +48,9 @@ class SimulationAnalysis:
 
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
-        all_sims = DataLoader().load_sim_data(self.root, 0, 10)
+        all_sims = DataLoader().load_sim_data(self.root, 0, 100)
         time_prices_dict = self.extract_prices_at_times(all_sims, seconds_list)
+        print(time_prices_dict)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
 
         return time_confidence_dict

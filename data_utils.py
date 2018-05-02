@@ -38,3 +38,26 @@ class DataUtils:
         trades_before = local_df[local_df['time'] < seconds]
         return trades_before['price'].iloc[-1]
 
+    def remove_tails(self, data: dd, std_devs: int, sample_size: int=10000):
+        data = DataUtils().keep_n_std_dev(data, std_devs)
+        if len(data) > sample_size:
+            data = data.sample(n=sample_size)
+        data = DataUtils().keep_n_std_dev(data, std_devs)
+
+        return data
+
+    def fuzzy_join(self, orders: dd, price_over_time: dd) -> dd:
+        orders['price'] = orders['price'].astype('float64')
+        orders['time'] = orders['time'].astype('datetime64[ns]')
+
+        price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
+
+        joined = orders.join(price_over_time, on='time').fillna(method='ffill')
+        print(joined)
+
+        joined['relative_price'] = joined.apply(
+            lambda row: float(row['price']) - float(row['most_recent_trade_price']),
+            axis=1)
+
+        return joined
+
