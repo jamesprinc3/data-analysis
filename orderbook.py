@@ -4,7 +4,7 @@ import stats
 from graph_creator import GraphCreator
 import matplotlib.pyplot as plt
 import pandas as pd
-
+from stats import Statistics
 
 class OrderBook:
 
@@ -14,11 +14,11 @@ class OrderBook:
         # Filter out orders/trades which arrived after the time we are interested in
         valid_messages = feed[feed['time'] < at.isoformat()]
 
-        trades = stats.get_trades(valid_messages)
+        trades = Statistics.get_trades(valid_messages)
         print("trade min: " + str(trades['price'].astype('float').min()))
         print("trade max: " + str(trades['price'].astype('float').max()))
-        cancellations = stats.get_cancellations(valid_messages)
-        orders = stats.get_orders(valid_messages)
+        cancellations = Statistics.get_cancellations(valid_messages)
+        orders = Statistics.get_orders(valid_messages)
 
         # Find those orders which are no longer on the book
         # TODO: find those orders which were modified, handle carefully
@@ -37,23 +37,24 @@ class OrderBook:
         orderbook.sort_values(by='price')
         orderbook.to_csv(file_path)
 
-    input_file = "/Users/jamesprince/project-data/merge/00:02:48.142841.parquet"
-    output_file = "/Users/jamesprince/project-data/orderbook.csv"
+input_file = "/Users/jamesprince/project-data/2018-03-25.parquet"
+output_file = "/Users/jamesprince/project-data/orderbook-2018-03-25-01:00:00.csv"
 
-    feed = dd.read_parquet(input_file)
-    btc_usd_feed = feed[feed['product_id'] == 'BTC-USD'].reset_index(drop=True).compute()
-    # print(btc_usd_feed)
-    time = datetime.datetime.utcnow()
-    orderbook = reconstruct_orderbook(btc_usd_feed, time)
-    # print(orderbook)
-    # stats.calculate_stats(orderbook)
+feed = dd.read_parquet(input_file)
+btc_usd_feed = feed[feed['product_id'] == 'BTC-USD'].reset_index(drop=True).compute()
+# print(btc_usd_feed)
+time = datetime.datetime(year=2018, month=3, day=25, hour=1)
+print(time)
+orderbook = OrderBook.reconstruct_orderbook(btc_usd_feed, time)
+# print(orderbook)
+# stats.calculate_stats(orderbook)
 
-    graph_creator = GraphCreator()
+graph_creator = GraphCreator("BTC-USD Order Book")
 
-    graph_creator.graph_sides(orderbook, "BTC-USD")
-    graph_creator.graph_order_sizes(orderbook)
-    graph_creator.graph_price_quantity(orderbook)
+graph_creator.graph_sides(orderbook)
+graph_creator.graph_order_sizes(orderbook)
+graph_creator.graph_price_quantity(orderbook)
 
-    orderbook_to_file(orderbook, output_file)
+OrderBook.orderbook_to_file(orderbook, output_file)
 
-    plt.show()
+plt.show()

@@ -33,8 +33,8 @@ if __name__ == "__main__":
     # if sim_data_file_path:
     #     SimulationAnalysis(sim_data_file_path, "BTC-USD").analyse()
 
-    print(combined)
-    print(sim_data_file_path)
+    # print(combined)
+    # print(sim_data_file_path)
 
     if combined == "y" and sim_data_file_path and real_data_file_path:
         CombinedAnalysis(sim_data_file_path, real_data_file_path).graph_real_prices_with_simulated_confidence_intervals()
