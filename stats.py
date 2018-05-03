@@ -9,22 +9,6 @@ class Statistics:
         A class which spits out a bunch of statistics related to trade feed data
         """
 
-    @staticmethod
-    def get_side(side: str, df: dd) -> dd:
-        return df[df['side'] == side]
-
-    @staticmethod
-    def get_trades(df: dd) -> dd:
-        return df[df['reason'] == 'filled']
-
-    @staticmethod
-    def get_orders(df: dd) -> dd:
-        return df[df['type'] == 'received']
-
-    @staticmethod
-    def get_cancellations(df: dd) -> dd:
-        return df[df['reason'] == 'canceled']
-
     def modifications(self, df: dd):
         pass
 

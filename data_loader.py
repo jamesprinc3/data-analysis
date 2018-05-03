@@ -1,5 +1,8 @@
 import dask.dataframe as dd
 import os
+import pandas as pd
+
+from datetime import datetime, timedelta
 
 
 class DataLoader:
@@ -43,9 +46,25 @@ class DataLoader:
 
         return return_list
 
-    def load_real_data(self, path) -> dd:
+    def load_real_data(self, root, start_time: datetime, end_time: datetime) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""
-        feed_dd = dd.read_parquet(path)
-        feed_dd = self.format_dd(feed_dd)
+        # Assume data is on the same day and just hours apart for now
+        hour_delta = end_time.hour - start_time.hour
+        files_to_load = []
 
-        return feed_dd
+        for i in range(0, hour_delta + 1):
+            filename = start_time.date().isoformat() + "/" + str(start_time.hour + i) + ".parquet"
+            print(filename)
+            files_to_load.append(filename)
+
+        feed_df = pd.DataFrame()
+        for filename in files_to_load:
+            file_path = root + filename
+            file_df = pd.read_parquet(file_path)
+            file_df = DataLoader().format_dd(file_df)
+            file_df = file_df[start_time < file_df['time']]
+            file_df = file_df[file_df['time'] < end_time]
+            print(file_df)
+            feed_df = feed_df.append(file_df)
+
+        return feed_df

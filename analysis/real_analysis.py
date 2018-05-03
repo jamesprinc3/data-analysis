@@ -1,6 +1,7 @@
 from typing import List
 
 import matplotlib.pyplot as plt
+import dask.dataframe as dd
 
 from data_loader import DataLoader
 from data_splitter import DataSplitter
@@ -12,64 +13,45 @@ from data_utils import DataUtils
 
 
 class RealAnalysis:
-    def __init__(self, file_path, data_description):
-        self.file_path = file_path
+    def __init__(self, orders_df: dd, trades_df: dd, cancels_df: dd, data_description: str):
+        self.orders_df = orders_df
+        self.trades_df = trades_df
+        self.cancels_df = cancels_df
         self.data_description = data_description
-
-        self.input_dd = DataLoader().load_real_data(self.file_path)
-        self.btc_usd_dd = self.input_dd[self.input_dd['product_id'] == 'BTC-USD']
 
     @staticmethod
     def secs_to_nanos(secs) -> int:
         return secs * 10 ** 9
 
     def generate_order_distributions(self):
-        orders_df = Statistics.get_orders(self.btc_usd_dd).compute()
-        orders_df = DataSplitter.get_last_n_nanos(orders_df, (10 * 60) * (10 ** 9))
-
-        trades_df = Statistics.get_trades(self.btc_usd_dd).compute()
-        trades_df = DataSplitter.get_last_n_nanos(trades_df, (10 * 60) * (10 ** 9))
-
-        relative_order_price_distributions = DataTransformer.relative_price_distribution(trades_df, orders_df)
+        distributions = {}
+        relative_order_price_distributions = DataTransformer.relative_price_distribution(self.trades_df, self.orders_df)
 
         # Buy/sell Price
-        buy_price_relative_distribution = relative_order_price_distributions["buy"]
-        sell_price_relative_distribution = relative_order_price_distributions["sell"]
+        distributions["buy_price"] = relative_order_price_distributions["buy"][1]
+        distributions["sell_price"] = relative_order_price_distributions["sell"][1]
 
         # Buy/sell Ratio
-        buy_sell_ratio = Statistics.get_buy_sell_ratio(orders_df)
+        # TODO: this is a bit of a code smell
+        distributions["buy_sell_ratio"] = Statistics.get_buy_sell_ratio(self.orders_df)
 
         # Buy/sell price Cancellation
-        cancels_df = Statistics.get_cancellations(self.btc_usd_dd).compute()
-        relative_cancel_price_distributions = DataTransformer.relative_price_distribution(trades_df, orders_df)
-        buy_price_cancellation_distribution = relative_cancel_price_distributions["buy"]
-        sell_price_cancellation_distribution = relative_cancel_price_distributions["sell"]
+        relative_cancel_price_distributions = DataTransformer.relative_price_distribution(self.trades_df,
+                                                                                          self.cancels_df)
+        distributions["buy_cancel_price"] = relative_cancel_price_distributions["buy"][1]
+        distributions["sell_cancel_price"] = relative_cancel_price_distributions["sell"][1]
 
         # Quantity
-        # quantity_distribution =
-        quantity_best_fit, quantity_best_fit_params = DistributionFitter.best_fit_distribution(orders_df['size'])
-        quantity_best_dist, quantity_dist_str = DistributionFitter.get_distribution_string(quantity_best_fit, quantity_best_fit_params)
+        quantity_best_fit, quantity_best_fit_params = DistributionFitter.best_fit_distribution(self.orders_df['size'])
+        _, distributions["quantity"] = DistributionFitter.get_distribution_string(quantity_best_fit,
+                                                                                  quantity_best_fit_params)
 
         # Interval
-        intervals_best_dist, intervals_dist_str = DataTransformer.intervals_distribution(orders_df)
+        _, distributions["interval"] = DataTransformer.intervals_distribution(self.orders_df)
 
-        print(buy_price_relative_distribution)
-        print(sell_price_relative_distribution)
-
-        print(buy_sell_ratio)
-
-        print(buy_price_cancellation_distribution)
-        print(sell_price_cancellation_distribution)
-
-        print(quantity_best_dist, quantity_dist_str)
-
-        print(intervals_best_dist, intervals_dist_str)
-
-        pass
+        return distributions
 
     def generate_graphs(self):
-
-
         # btc_usd_price_buy = pd.Series(Statistics.get_side('buy', input_dd)['price'].astype('float64').tolist())
         #
         # sample_size = 100
@@ -83,7 +65,7 @@ class RealAnalysis:
         graph_creator = GraphCreator("Real BTC-USD")
         num_seconds = 10
 
-        orders_df = Statistics.get_orders(self.btc_usd_dd).compute()
+        orders_df = DataSplitter.get_orders(self.btc_usd_dd).compute()
         orders_df = DataSplitter.get_last_n_nanos(orders_df, (5 * 60) * (10 ** 9))
         orders_df = DataSplitter.get_first_n_nanos(orders_df, self.secs_to_nanos(num_seconds))
         graph_creator.graph_price_time(orders_df, "orders")

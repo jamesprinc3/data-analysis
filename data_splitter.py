@@ -22,3 +22,19 @@ class DataSplitter:
         converted = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
 
         return df[start_time > converted]
+
+    @staticmethod
+    def get_side(side: str, df: dd) -> dd:
+        return df[df['side'] == side]
+
+    @staticmethod
+    def get_trades(df: dd) -> dd:
+        return df[df['reason'] == 'filled']
+
+    @staticmethod
+    def get_orders(df: dd) -> dd:
+        return df[df['type'] == 'received']
+
+    @staticmethod
+    def get_cancellations(df: dd) -> dd:
+        return df[df['reason'] == 'canceled']

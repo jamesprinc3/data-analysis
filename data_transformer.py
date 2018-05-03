@@ -1,3 +1,4 @@
+from data_splitter import DataSplitter
 from data_utils import DataUtils
 import dask.dataframe as dd
 
@@ -15,7 +16,7 @@ class DataTransformer:
         price_over_time: dd = Statistics().get_price_over_time(trades_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
 
         # Buy Side
-        buy_df = Statistics().get_side("buy", other_df)
+        buy_df = DataSplitter.get_side("buy", other_df)
         buy_df = DataUtils().fuzzy_join(buy_df, price_over_time)
         # Flip the distribution around so that we can actually fit it to something breeze can sample from
         buy_prices = buy_df['relative_price'].apply(lambda x: -x)
@@ -25,7 +26,7 @@ class DataTransformer:
         buy_best_dist, buy_dist_str = DistributionFitter.get_distribution_string(buy_best_fit, buy_best_fit_params)
 
         # Sell Side
-        sell_df = Statistics().get_side("sell", other_df)
+        sell_df = DataSplitter.get_side("sell", other_df)
         sell_df = DataUtils().fuzzy_join(sell_df, price_over_time)
         sell_prices = sell_df['relative_price']
         sell_prices = DataUtils().remove_tails(sell_prices, 3)

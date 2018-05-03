@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import logging
 from logging.config import fileConfig
 
@@ -11,37 +12,41 @@ from analysis.combined_analysis import CombinedAnalysis
 if __name__ == "__main__":
     fileConfig('logging_config.ini')
     logger = logging.getLogger()
-    logger.debug('often makes a very good meal of %s', 'visiting tourists')
 
     parser = argparse.ArgumentParser(description='Analyse level III order book data')
-    parser.add_argument('--real_data', metavar='-rd', type=str, nargs='?',
-                        help='file path to real data for which you want some info/statistics')
-    parser.add_argument('--sim_data', metavar='-sd', type=str, nargs='?',
-                        help='file path to the root of simulation data for which you want some info/statistics')
+    parser.add_argument('--real_root', metavar='-rd', type=str, nargs='?',
+                        help='file path to real data')
+    parser.add_argument('--sim_root', metavar='-sd', type=str, nargs='?',
+                        help='file path to the root of simulation data')
     parser.add_argument('--combined', metavar='y/n', type=str, nargs='?',
                         help='(default no) boolean of whether to include combined analysis')
+    parser.add_argument('--start_time', metavar='YYYY-MM-DDTHH:mm:SS', type=str, nargs='?',
+                        help='time to start the simulation from')
+    parser.add_argument('--sampling_window', metavar='int', type=int, nargs='?',
+                        help='number of seconds before start_time to sample from')
+    parser.add_argument('--simulation_window', metavar='int', type=int, nargs='?',
+                        help='number of seconds after start_time to simulate')
     parser.print_help()
 
     args = parser.parse_args()
-    real_data_file_path = args.real_data
-    sim_data_file_path = args.sim_data
+    real_root = args.real_root
+    sim_root = args.sim_root
+    start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
+    sampling_window = args.sampling_window
+    simulation_window = args.simulation_window
     combined = args.combined
 
-    if combined == "y" and sim_data_file_path and real_data_file_path:
-        CombinedAnalysis(sim_data_file_path, real_data_file_path).graph_real_prices_with_simulated_confidence_intervals()
+    if combined == "y" and sim_root and real_root and start_time and sampling_window and simulation_window:
+        combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window)
+        combined_analysis.run_simulation()
+        combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
     else:
-        if real_data_file_path:
-            RealAnalysis(real_data_file_path, "BTC-USD").generate_order_distributions()
+        if real_root:
+            RealAnalysis(real_root, "BTC-USD").generate_order_distributions()
             # RealAnalysis(real_data_file_path, "BTC-USD").generate_graphs()
 
-        if sim_data_file_path:
-            SimulationAnalysis(sim_data_file_path, "BTC-USD").analyse()
-
-    # print(combined)
-    # print(sim_data_file_path)
-
-
-
+        if sim_root:
+            SimulationAnalysis(sim_root, "BTC-USD").analyse()
 
 
 def sides(df: dd) -> (int, int):
@@ -50,6 +55,3 @@ def sides(df: dd) -> (int, int):
     print("number of sell side interactions: " + str(num_sells))
     print("number of buy side interactions: " + str(num_buys))
     return num_buys, num_sells
-
-
-
