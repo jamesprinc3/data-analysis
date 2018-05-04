@@ -8,6 +8,7 @@ import dask.dataframe as dd
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
 from analysis.combined_analysis import CombinedAnalysis
+from data_loader import DataLoader
 
 if __name__ == "__main__":
     fileConfig('logging_config.ini')
@@ -31,19 +32,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
     real_root = args.real_root
     sim_root = args.sim_root
-    start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
+    start_time = args.start_time
     sampling_window = args.sampling_window
     simulation_window = args.simulation_window
     combined = args.combined
 
     if combined == "y" and sim_root and real_root and start_time and sampling_window and simulation_window:
+        start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
+
         combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window)
         combined_analysis.run_simulation()
         combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
     else:
-        if real_root:
-            RealAnalysis(real_root, "BTC-USD").generate_order_distributions()
-            # RealAnalysis(real_data_file_path, "BTC-USD").generate_graphs()
+        if real_root and start_time and sampling_window:
+            start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
+            sampling_window_start_time = start_time - datetime.timedelta(seconds=sampling_window)
+            sampling_window_end_time = start_time
+            orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, sampling_window_start_time, sampling_window_end_time)
+            real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
+            # real_analysis.generate_order_params()
+            real_analysis.generate_graphs()
 
         if sim_root:
             SimulationAnalysis(sim_root, "BTC-USD").analyse()

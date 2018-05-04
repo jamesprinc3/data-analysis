@@ -19,18 +19,18 @@ class DataTransformer:
         buy_df = DataSplitter.get_side("buy", other_df)
         buy_df = DataUtils().fuzzy_join(buy_df, price_over_time)
         # Flip the distribution around so that we can actually fit it to something breeze can sample from
-        buy_prices = buy_df['relative_price'].apply(lambda x: -x)
-        print(buy_prices)
-        buy_prices = DataUtils().remove_tails(buy_prices, 3)
-        buy_best_fit, buy_best_fit_params = DistributionFitter.best_fit_distribution(buy_prices, bins)
+        realtive_buy_prices = buy_df['relative_price'].apply(lambda x: -x)
+        print(realtive_buy_prices)
+        realtive_buy_prices = DataUtils().remove_tails(realtive_buy_prices, 3)
+        buy_best_fit, buy_best_fit_params = DistributionFitter.best_fit_distribution(realtive_buy_prices, bins)
         buy_best_dist, buy_dist_str = DistributionFitter.get_distribution_string(buy_best_fit, buy_best_fit_params)
 
         # Sell Side
         sell_df = DataSplitter.get_side("sell", other_df)
         sell_df = DataUtils().fuzzy_join(sell_df, price_over_time)
-        sell_prices = sell_df['relative_price']
-        sell_prices = DataUtils().remove_tails(sell_prices, 3)
-        sell_best_fit, sell_best_fit_params = DistributionFitter.best_fit_distribution(sell_prices, bins)
+        relative_sell_prices = sell_df['relative_price']
+        relative_sell_prices = DataUtils().remove_tails(relative_sell_prices, 3)
+        sell_best_fit, sell_best_fit_params = DistributionFitter.best_fit_distribution(relative_sell_prices, bins)
         sell_best_dist, sell_dist_str = DistributionFitter.get_distribution_string(sell_best_fit, sell_best_fit_params)
 
         return {"buy": (buy_best_dist, buy_dist_str), "sell": (sell_best_dist, sell_dist_str)}

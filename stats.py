@@ -1,6 +1,8 @@
 import dask.dataframe as dd
 import pandas as pd
 
+from data_splitter import DataSplitter
+
 
 class Statistics:
 
@@ -45,7 +47,6 @@ class Statistics:
     def get_price_over_time(trades_df: dd) -> pd.DataFrame:
         price_times_df = trades_df[['time', 'price']].dropna()
         price_times_df.rename(index=str, columns={"price": "most_recent_trade_price"}, inplace=True)
-        print(price_times_df)
         price_times_df['most_recent_trade_price'] = price_times_df['most_recent_trade_price'].astype('float64')
         return price_times_df.drop_duplicates()
 
@@ -61,8 +62,8 @@ class Statistics:
         num_match = self.get_num_type('match', df)
         num_change = self.get_num_type('change', df)
 
-        avg_trade_price = self.get_mean('price', self.get_trades(df))
-        std_dev_trade_price = self.get_std_dev('price', self.get_trades(df))
+        avg_trade_price = self.get_mean('price', DataSplitter.get_trades(df))
+        std_dev_trade_price = self.get_std_dev('price', DataSplitter.get_trades(df))
 
         print("percentage of received messages: " + str((100 * num_received) / num_total_msgs) + "%")
         print("percentage of open messages: " + str((100 * num_open) / num_total_msgs) + "%")
@@ -86,20 +87,20 @@ class Statistics:
         avg_order_size = self.get_mean('size', df)
         std_dev_order_size = self.get_std_dev('size', df)
 
-        avg_sell_order_size = self.get_mean('size', self.get_side('sell', df))
-        std_dev_sell_order_size = self.get_std_dev('size', self.get_side('sell', df))
+        avg_sell_order_size = self.get_mean('size', DataSplitter.get_side('sell', df))
+        std_dev_sell_order_size = self.get_std_dev('size', DataSplitter.get_side('sell', df))
 
-        avg_buy_order_size = self.get_mean('size', self.get_side('buy', df))
-        std_dev_buy_order_size = self.get_std_dev('size', self.get_side('buy', df))
+        avg_buy_order_size = self.get_mean('size', DataSplitter.get_side('buy', df))
+        std_dev_buy_order_size = self.get_std_dev('size', DataSplitter.get_side('buy', df))
 
         avg_price = df['price'].astype('float64').mean()
         std_dev_price = df['price'].astype('float64').std()
 
-        avg_sell_order_price = self.get_mean('price', self.get_side('sell', df))
-        std_dev_sell_price = self.get_std_dev('price', self.get_side('sell', df))
+        avg_sell_order_price = self.get_mean('price', DataSplitter.get_side('sell', df))
+        std_dev_sell_price = self.get_std_dev('price', DataSplitter.get_side('sell', df))
 
-        avg_buy_price = self.get_mean('price', self.get_side('buy', df))
-        std_dev_buy_order_price = self.get_std_dev('price', self.get_side('buy', df))
+        avg_buy_price = self.get_mean('price', DataSplitter.get_side('buy', df))
+        std_dev_buy_order_price = self.get_std_dev('price', DataSplitter.get_side('buy', df))
 
         print("average order size: " + str(avg_order_size))
         print("std. dev. of order size: " + str(std_dev_order_size))

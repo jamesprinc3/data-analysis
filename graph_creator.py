@@ -2,6 +2,7 @@ import dask.dataframe as dd
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from data_splitter import DataSplitter
 from distribution_fitter import DistributionFitter
 from stats import Statistics
 from data_utils import DataUtils
@@ -35,44 +36,38 @@ class GraphCreator:
         self.graph_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
         self.graph_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
 
-    # TODO: REFACTOR (mostly replaced by data_utils.join_orders() )
-    def format_orders(self, orders: dd, price_over_time: dd):
-        orders['price'] = orders['price'].astype('float64')
-        orders['time'] = orders['time'].astype('datetime64[ns]')
-
-        price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
-
-        # print("orders\n")
-        # print(orders)
-        # print("price over time\n")
-        # print(price_over_time)
-
-        # B1 = orders.set_index('time').reindex(price_over_time.index, method='nearest').reset_index()
-        joined = orders.join(price_over_time, on='time').fillna(method='ffill')
-        print(joined)
-
-        joined['relative_price'] = joined.apply(lambda row: float(row['price']) - float(row['most_recent_trade_price']),
-                                                axis=1)
-
-        return joined
+    # TODO: REFACTOR (mostly replaced by data_utils.fuzzy() )
+    # def format_orders(self, orders: dd, price_over_time: dd):
+    #     orders['price'] = orders['price'].astype('float64')
+    #     orders['time'] = orders['time'].astype('datetime64[ns]')
+    #
+    #     price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
+    #
+    #     # print("orders\n")
+    #     # print(orders)
+    #     # print("price over time\n")
+    #     # print(price_over_time)
+    #
+    #     # B1 = orders.set_index('time').reindex(price_over_time.index, method='nearest').reset_index()
+    #     joined = orders.join(price_over_time, on='time').fillna(method='ffill')
+    #
+    #     joined['relative_price'] = joined.apply(lambda row: float(row['price']) - float(row['most_recent_trade_price']),
+    #                                             axis=1)
+    #
+    #     return joined
 
     # TODO: calculate price % difference (so that we can compare these distributions between currencies or points in time where the price is very different
     # TODO: make this use the mid price as calculated by what the order book actually looks like
-    def graph_order_relative_price_distribution(self, feed_df: dd):
-        trades_df = Statistics.get_trades(feed_df)
-        orders_df = Statistics.get_orders(feed_df)
-        self.graph_relative_price_distribution(trades_df, orders_df)
-
     def graph_relative_price_distribution(self, trades_df: dd, other_df: dd, num_bins=100):
         price_over_time: dd = Statistics().get_price_over_time(trades_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
 
-        buy_df = Statistics().get_side("buy", other_df)
-        buy_df = self.format_orders(buy_df, price_over_time)
+        buy_df = DataSplitter.get_side("buy", other_df)
+        buy_df = DataUtils.fuzzy_join(buy_df, price_over_time)
         # Flip the distribution around so that we can actually fit it to something breeze can sample from
         buy_df['relative_price'] = buy_df['relative_price'].apply(lambda x: -x)
 
-        sell_df = Statistics().get_side("sell", other_df)
-        sell_df = self.format_orders(sell_df, price_over_time)
+        sell_df = DataSplitter.get_side("sell", other_df)
+        sell_df = DataUtils.fuzzy_join(sell_df, price_over_time)
 
         # Graphing
         plt.figure(figsize=(12, 8))

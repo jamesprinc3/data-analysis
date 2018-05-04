@@ -40,7 +40,9 @@ class DistributionFitter:
         #     st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
         # ]
 
-        DISTRIBUTIONS = [st.expon, st.poisson, st.lognorm] #st.loggamma,
+        DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2, st.f, st.gamma, st.gumbel_r,
+                         st.gumbel_l, st.expon, st.laplace, st.pareto, st.poisson,
+                         st.lognorm, st.norm, st.vonmises, st.weibull_min, st.weibull_max] #st.loggamma,
 
         # Best holders
         best_distribution = st.norm
@@ -58,6 +60,7 @@ class DistributionFitter:
 
                     # fit dist to data
                     params = distribution.fit(data)
+
 
                     # Separate parts of parameters
                     arg = params[:-2]

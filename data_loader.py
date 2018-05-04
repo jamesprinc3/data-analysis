@@ -4,6 +4,8 @@ import pandas as pd
 
 from datetime import datetime, timedelta
 
+from data_splitter import DataSplitter
+
 
 class DataLoader:
     """Loads data and formats it appropriately so that we can always assume
@@ -68,3 +70,13 @@ class DataLoader:
             feed_df = feed_df.append(file_df)
 
         return feed_df
+
+    @staticmethod
+    def load_sampling_data(real_root, start_time, end_time):
+        feed_df = DataLoader().load_real_data(real_root, start_time, end_time)
+
+        orders_df = DataSplitter.get_orders(feed_df)
+        trades_df = DataSplitter.get_trades(feed_df)
+        cancels_df = DataSplitter.get_cancellations(feed_df)
+
+        return orders_df, trades_df, cancels_df
