@@ -1,8 +1,9 @@
-import dask.dataframe as dd
+import logging
 import os
-import pandas as pd
+from datetime import datetime
 
-from datetime import datetime, timedelta
+import dask.dataframe as dd
+import pandas as pd
 
 from data_splitter import DataSplitter
 
@@ -10,6 +11,8 @@ from data_splitter import DataSplitter
 class DataLoader:
     """Loads data and formats it appropriately so that we can always assume
     timestamps and floats are not string types to avoid silly conversions all over the place"""
+    def __init__(self):
+        self.logger = logging.getLogger()
 
     def format_dd(self, df: dd) -> dd:
         df['time'] = df['time'].astype('datetime64[ns]')
@@ -38,7 +41,7 @@ class DataLoader:
             trades_path: str = data_root + directory + "/trades.csv"
             cancels_path: str = data_root + directory + "/cancels.csv"
 
-            print(orders_path)
+            self.logger.debug(orders_path)
 
             orders_dd = self.format_dd(dd.read_csv(orders_path))
             trades_dd = self.format_dd(dd.read_csv(trades_path))
@@ -56,7 +59,7 @@ class DataLoader:
 
         for i in range(0, hour_delta + 1):
             filename = start_time.date().isoformat() + "/" + str(start_time.hour + i) + ".parquet"
-            print(filename)
+            self.logger.debug(filename)
             files_to_load.append(filename)
 
         feed_df = pd.DataFrame()
@@ -66,7 +69,6 @@ class DataLoader:
             file_df = DataLoader().format_dd(file_df)
             file_df = file_df[start_time < file_df['time']]
             file_df = file_df[file_df['time'] < end_time]
-            print(file_df)
             feed_df = feed_df.append(file_df)
 
         return feed_df

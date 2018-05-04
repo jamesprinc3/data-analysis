@@ -18,14 +18,14 @@ class DataUtils:
 
     # TODO: we can probably replace this into a few places in the codebase
     def get_times_in_seconds_after_start(self, series: pd.Series):
-        # print(series)
+        # logger.debug(series)
         # series = pd.to_datetime(series, unit='ns')
         start_time = series.iloc[0]
-        # print(series)
+        # logger.debug(series)
         series = series.apply(lambda x: (x - start_time))
         series = series.apply(lambda x: x.total_seconds())
 
-        # print(series)
+        # logger.debug(series)
 
         return series
 
@@ -34,7 +34,7 @@ class DataUtils:
     def get_last_price_before(trades_df: dd, seconds: int):
         local_df = trades_df.copy()
         local_df['time'] = DataUtils().get_times_in_seconds_after_start(local_df['time'])
-        # print(local_df['time'])
+        # logger.debug(local_df['time'])
         trades_before = local_df[local_df['time'] < seconds]
         return trades_before['price'].iloc[-1]
 
@@ -46,14 +46,14 @@ class DataUtils:
 
         return data
 
-    def fuzzy_join(self, orders: dd, price_over_time: dd) -> dd:
+    @staticmethod
+    def fuzzy_join(orders: dd, price_over_time: dd) -> dd:
         orders['price'] = orders['price'].astype('float64')
         orders['time'] = orders['time'].astype('datetime64[ns]')
 
         price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
 
         joined = orders.join(price_over_time, on='time').fillna(method='ffill')
-        print(joined)
 
         joined['relative_price'] = joined.apply(
             lambda row: float(row['price']) - float(row['most_recent_trade_price']),

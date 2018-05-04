@@ -20,7 +20,7 @@ class DataTransformer:
         buy_df = DataUtils().fuzzy_join(buy_df, price_over_time)
         # Flip the distribution around so that we can actually fit it to something breeze can sample from
         realtive_buy_prices = buy_df['relative_price'].apply(lambda x: -x)
-        print(realtive_buy_prices)
+        logger.debug(realtive_buy_prices)
         realtive_buy_prices = DataUtils().remove_tails(realtive_buy_prices, 3)
         buy_best_fit, buy_best_fit_params = DistributionFitter.best_fit_distribution(realtive_buy_prices, bins)
         buy_best_dist, buy_dist_str = DistributionFitter.get_distribution_string(buy_best_fit, buy_best_fit_params)
@@ -38,7 +38,7 @@ class DataTransformer:
     @staticmethod
     def intervals_distribution(df: dd):
         intervals = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
-        print(intervals)
+        logger.debug(intervals)
         cleaned_intervals = intervals[intervals != 0]
 
         intervals_best_fit, intervals_best_fit_params = DistributionFitter.best_fit_distribution(cleaned_intervals)

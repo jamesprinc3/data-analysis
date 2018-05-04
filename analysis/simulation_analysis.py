@@ -21,7 +21,7 @@ class SimulationAnalysis:
         self.graph_creator = GraphCreator("Simulation " + data_desc)
 
     def analyse(self):
-        # print(self.dirs)
+        # logger.debug(self.dirs)
         # for directory in self.dirs:
         orders_dd, trades_dd, cancels_dd = DataLoader().load_sim_data(self.root)[0]
 
@@ -36,8 +36,8 @@ class SimulationAnalysis:
         self.graph_creator.graph_price_time(trades_df, "trades")
 
         # cancels_df = pd.read_csv(cancels_path)
-        # print("cancels df")
-        # print(cancels_df)
+        # logger.debug("cancels df")
+        # logger.debug(cancels_df)
         # self.graph_creator.graph_relative_price_distribution(trades_df, cancels_df, 20)
 
         self.graph_creator.graph_relative_price_distribution(trades_df, orders_df, 20)
@@ -50,7 +50,7 @@ class SimulationAnalysis:
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
         all_sims = DataLoader().load_sim_data(self.root, 0, 100)
         time_prices_dict = self.extract_prices_at_times(all_sims, seconds_list)
-        print(time_prices_dict)
+        logger.debug(time_prices_dict)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
 
         return time_confidence_dict

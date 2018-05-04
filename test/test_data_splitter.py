@@ -11,7 +11,7 @@ class TestGetFirstNNanos(TestCase):
         epoch = datetime.datetime.utcfromtimestamp(0)
         time_beyond_end = datetime.datetime.utcfromtimestamp(10)
         times = [epoch, time_beyond_end]
-        # print(times)
+        # logger.debug(times)
         self.df = pd.DataFrame({"time": times})
         self.df['time'] = self.df['time'].astype('datetime64[ns]')
 

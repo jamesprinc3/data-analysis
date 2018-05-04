@@ -15,8 +15,8 @@ class OrderBook:
         valid_messages = feed[feed['time'] < at.isoformat()]
 
         trades = Statistics.get_trades(valid_messages)
-        print("trade min: " + str(trades['price'].astype('float').min()))
-        print("trade max: " + str(trades['price'].astype('float').max()))
+        logger.debug("trade min: " + str(trades['price'].astype('float').min()))
+        logger.debug("trade max: " + str(trades['price'].astype('float').max()))
         cancellations = Statistics.get_cancellations(valid_messages)
         orders = Statistics.get_orders(valid_messages)
 
@@ -24,7 +24,7 @@ class OrderBook:
         # TODO: find those orders which were modified, handle carefully
         executed_order_ids = trades['order_id'].unique()
         cancelled_order_ids = cancellations['order_id'].unique()
-        # print(executed_order_ids)
+        # logger.debug(executed_order_ids)
 
         # Find those orders which are still on the book
         remaining_orders = orders[~orders['order_id'].isin(executed_order_ids)
@@ -42,11 +42,11 @@ output_file = "/Users/jamesprince/project-data/orderbook-2018-03-25-01:00:00.csv
 
 feed = dd.read_parquet(input_file)
 btc_usd_feed = feed[feed['product_id'] == 'BTC-USD'].reset_index(drop=True).compute()
-# print(btc_usd_feed)
+# logger.debug(btc_usd_feed)
 time = datetime.datetime(year=2018, month=3, day=25, hour=1)
-print(time)
+logger.debug(time)
 orderbook = OrderBook.reconstruct_orderbook(btc_usd_feed, time)
-# print(orderbook)
+# logger.debug(orderbook)
 # stats.calculate_stats(orderbook)
 
 graph_creator = GraphCreator("BTC-USD Order Book")

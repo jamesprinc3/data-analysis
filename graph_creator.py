@@ -14,7 +14,7 @@ class GraphCreator:
 
     def graph_time_delta(self, orders_df: dd):
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
-        print(order_time_delta_df)
+        logger.debug(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
         self.graph_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
 
@@ -43,10 +43,10 @@ class GraphCreator:
     #
     #     price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
     #
-    #     # print("orders\n")
-    #     # print(orders)
-    #     # print("price over time\n")
-    #     # print(price_over_time)
+    #     # logger.debug("orders\n")
+    #     # logger.debug(orders)
+    #     # logger.debug("price over time\n")
+    #     # logger.debug(price_over_time)
     #
     #     # B1 = orders.set_index('time').reindex(price_over_time.index, method='nearest').reset_index()
     #     joined = orders.join(price_over_time, on='time').fillna(method='ffill')
@@ -78,13 +78,13 @@ class GraphCreator:
     def graph_price_time(self, df: dd, data_desc: str):
         #
         y = df['price'].astype('float64').fillna(method='ffill')
-        print(y)
-        print(df['time'].astype('datetime64[ns]'))
+        logger.debug(y)
+        logger.debug(df['time'].astype('datetime64[ns]'))
         times = df['time'].astype('datetime64[ns]').apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
         start_time = times.min()
-        print("start_time " + str(start_time))
+        logger.debug("start_time " + str(start_time))
         x = times.apply(lambda z: (z - start_time) / 1e6)
-        # print(x)
+        # logger.debug(x)
 
         plt.figure(figsize=(12, 8))
 

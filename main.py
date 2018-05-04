@@ -60,6 +60,6 @@ if __name__ == "__main__":
 def sides(df: dd) -> (int, int):
     num_buys = len(df[df['side'] == 'sell'])
     num_sells = len(df[df['side'] == 'buy'])
-    print("number of sell side interactions: " + str(num_sells))
-    print("number of buy side interactions: " + str(num_buys))
+    logger.debug("number of sell side interactions: " + str(num_sells))
+    logger.debug("number of buy side interactions: " + str(num_buys))
     return num_buys, num_sells

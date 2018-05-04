@@ -26,17 +26,19 @@ class CombinedAnalysis:
 
         self.real_root = real_root
         self.start_time = start_time
-        print(start_time)
+        logger.debug(start_time)
         self.sampling_window = sampling_window
         self.simulation_window = simulation_window
 
     def run_simulation(self):
-        orders_df, trades_df, cancels_df = self.__fetch_sampling_data()
+        sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
+        sampling_window_end_time = self.start_time
+        orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, sampling_window_start_time, sampling_window_end_time)
         real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
 
-        distributions = real_analysis.generate_order_distributions()
+        params = real_analysis.generate_order_params()
 
-        self.__distributions_to_file(distributions, "/Users/jamesprince/project-data/distributions.json")
+        self.__params_to_file(params, "/Users/jamesprince/project-data/distributions.json")
 
         pass
 
@@ -45,7 +47,7 @@ class CombinedAnalysis:
         interval = 10  # seconds
         times = list(range(interval, self.simulation_window, interval))
         confidence_intervals = self.sim_analysis.calculate_confidence_at_times(times)
-        print(confidence_intervals)
+        logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
 
@@ -90,17 +92,8 @@ class CombinedAnalysis:
 
         return real_times, real_prices
 
-    def __fetch_sampling_data(self):
-        feed_df = DataLoader().load_real_data(self.real_root, self.start_time - timedelta(seconds=self.simulation_window), self.start_time)
-
-        orders_df = DataSplitter.get_orders(feed_df)
-        trades_df = DataSplitter.get_trades(feed_df)
-        cancels_df = DataSplitter.get_cancellations(feed_df)
-
-        return orders_df, trades_df, cancels_df
-
     @staticmethod
-    def __distributions_to_file(distributions: dict, file_path: str):
+    def __params_to_file(params: dict, file_path: str):
         with open(file_path, 'w') as fp:
-            json.dump(distributions, fp)
+            json.dump(params, fp)
 

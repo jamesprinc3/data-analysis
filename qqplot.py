@@ -9,11 +9,11 @@ from typing import List
 def plot(observed: List[float], theoretical):
 
     observed = np.random.normal(0, 1, 1000)
-    print(observed)
+    logger.debug(observed)
 
     rvs = st.alpha.rvs(size=10)
     f, l = np.histogram(rvs)
-    print(f)
+    logger.debug(f)
 
     sm.qqplot(observed, f)
     pylab.show()
