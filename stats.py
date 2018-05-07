@@ -1,3 +1,5 @@
+from typing import Dict, Union, Any
+
 import dask.dataframe as dd
 import pandas as pd
 
@@ -8,7 +10,7 @@ class Statistics:
 
     def __init__(self):
         """
-        A class which spits out a bunch of statistics related to trade feed data
+        A class which generates a bunch of statistics related to trade feed data
         """
 
     def modifications(self, df: dd):
@@ -33,14 +35,32 @@ class Statistics:
         return df[col_name].astype('float64').std()
 
     @staticmethod
-    def get_buy_sell_ratio(df: dd) -> (float, float):
-        num_buys = len(df[df['side'] == 'sell'])
-        num_sells = len(df[df['side'] == 'buy'])
+    def get_buy_sell_order_ratio(df: dd) -> (float, float):
+        print(df)
 
-        buy_ratio = (100 * num_buys) / (num_buys + num_sells)
-        sell_ratio = (100 * num_sells) / (num_buys + num_sells)
+        num_buys = len(DataSplitter.get_side("buy", df))
+        num_sells = len(DataSplitter.get_side("sell", df))
+
+        buy_ratio = num_buys / (num_buys + num_sells)
+        sell_ratio = num_sells / (num_buys + num_sells)
 
         return buy_ratio, sell_ratio
+
+    @staticmethod
+    def get_buy_sell_volume_ratio(df: dd):
+        buys = DataSplitter.get_side("buy", df)
+        sells = DataSplitter.get_side("sell", df)
+
+        buy_vol = buys['size'].sum()
+        sell_vol = sells['size'].sum()
+
+        total_vol = buy_vol + sell_vol
+
+        buy_vol_ratio = pd.to_numeric(buy_vol / total_vol)
+        sell_vol_ratio = sell_vol / total_vol
+
+        return buy_vol_ratio, sell_vol_ratio
+
 
     # PRE: df must be trades only
     @staticmethod
@@ -50,77 +70,37 @@ class Statistics:
         price_times_df['most_recent_trade_price'] = price_times_df['most_recent_trade_price'].astype('float64')
         return price_times_df.drop_duplicates()
 
-    def calculate_feed_stats(self, df: dd) -> None:
-        """Calculate and print some statistics based on the data"""
-        num_total_msgs = get_total(df)
-        num_trades = self.get_num_reason('filled', df)
-        num_cancel = self.get_num_reason('canceled', df)
+    @staticmethod
+    def get_feed_stats(df: dd) -> Dict[str, Union[int, Any]]:
+        """Calculate and print some statistics relating to the data feed"""
+        stats = {'num_total_msgs': get_total(df), 'num_trades': Statistics.get_num_reason('filled', df),
+                 'num_cancel': Statistics.get_num_reason('canceled', df), 'num_received': Statistics.get_num_type('received', df),
+                 'num_open': Statistics.get_num_type('open', df), 'num_done': Statistics.get_num_type('done', df),
+                 'num_match': Statistics.get_num_type('match', df), 'num_change': Statistics.get_num_type('change', df),
+                 'avg_trade_price': Statistics.get_mean('price', DataSplitter.get_trades(df)),
+                 'std_dev_trade_price': Statistics.get_std_dev('price', DataSplitter.get_trades(df))}
 
-        num_received = self.get_num_type('received', df)
-        num_open = self.get_num_type('open', df)
-        num_done = self.get_num_type('done', df)
-        num_match = self.get_num_type('match', df)
-        num_change = self.get_num_type('change', df)
+        return stats
 
-        avg_trade_price = self.get_mean('price', DataSplitter.get_trades(df))
-        std_dev_trade_price = self.get_std_dev('price', DataSplitter.get_trades(df))
+    @staticmethod
+    def get_order_stats(df: dd) -> Dict[Union[str, Any], Union[float, Any]]:
+        stats = {'buy_order_ratio': Statistics.get_buy_sell_order_ratio(df)[0],
+                 'sell_order_ratio': Statistics.get_buy_sell_order_ratio(df)[1],
+                 'buy_volume_ratio': Statistics.get_buy_sell_volume_ratio(df)[0],
+                 'sell_volume_ratio': Statistics.get_buy_sell_volume_ratio(df)[1],
+                 'avg_order_size': Statistics.get_mean('size', df), 'std_dev_order_size': Statistics.get_std_dev('size', df),
+                 'avg_sell_order_size': Statistics.get_mean('size', DataSplitter.get_side('sell', df)),
+                 'std_dev_sell_order_size': Statistics.get_std_dev('size', DataSplitter.get_side('sell', df)),
+                 'avg_buy_order_size': Statistics.get_mean('size', DataSplitter.get_side('buy', df)),
+                 'std_dev_buy_order_size': Statistics.get_std_dev('size', DataSplitter.get_side('buy', df)),
+                 'avg_price': df['price'].astype('float64').mean(),
+                 'std_dev_price': df['price'].astype('float64').std(),
+                 'avg_sell_order_price': Statistics.get_mean('price', DataSplitter.get_side('sell', df)),
+                 'std_dev_sell_price': Statistics.get_std_dev('price', DataSplitter.get_side('sell', df)),
+                 'avg_buy_price': Statistics.get_mean('price', DataSplitter.get_side('buy', df)),
+                 'std_dev_buy_order_price': Statistics.get_std_dev('price', DataSplitter.get_side('buy', df))}
 
-        print("percentage of received messages: " + str((100 * num_received) / num_total_msgs) + "%")
-        print("percentage of open messages: " + str((100 * num_open) / num_total_msgs) + "%")
-        print("percentage of done messages: " + str((100 * num_done) / num_total_msgs) + "%")
-        print("percentage of match messages: " + str((100 * num_match) / num_total_msgs) + "%")
-        print("percentage of change messages: " + str((100 * num_change) / num_total_msgs) + "%")
-
-        print("percentage of orders canceled: " + str((100 * num_cancel) / num_received) + "%")
-        print("percentage of orders filled: " + str((100 * num_trades) / num_received) + "%")
-
-        print("average trade price: " + str(avg_trade_price))
-        print("std. dev. of trade price: " + str(std_dev_trade_price))
-
-        self.calculate_stats(df)
-
-    def calculate_stats(self, df:dd) -> None:
-
-        buy_ratio, sell_ratio = self.get_buy_sell_ratio(df)
-        print("Ratio (buy/sell): " + str(buy_ratio) + ":" + str(sell_ratio))
-
-        avg_order_size = self.get_mean('size', df)
-        std_dev_order_size = self.get_std_dev('size', df)
-
-        avg_sell_order_size = self.get_mean('size', DataSplitter.get_side('sell', df))
-        std_dev_sell_order_size = self.get_std_dev('size', DataSplitter.get_side('sell', df))
-
-        avg_buy_order_size = self.get_mean('size', DataSplitter.get_side('buy', df))
-        std_dev_buy_order_size = self.get_std_dev('size', DataSplitter.get_side('buy', df))
-
-        avg_price = df['price'].astype('float64').mean()
-        std_dev_price = df['price'].astype('float64').std()
-
-        avg_sell_order_price = self.get_mean('price', DataSplitter.get_side('sell', df))
-        std_dev_sell_price = self.get_std_dev('price', DataSplitter.get_side('sell', df))
-
-        avg_buy_price = self.get_mean('price', DataSplitter.get_side('buy', df))
-        std_dev_buy_order_price = self.get_std_dev('price', DataSplitter.get_side('buy', df))
-
-        print("average order size: " + str(avg_order_size))
-        print("std. dev. of order size: " + str(std_dev_order_size))
-
-        print("average sell order size: " + str(avg_sell_order_size))
-        print("sell order std. dev: " + str(std_dev_sell_order_size))
-
-        print("average buy order size: " + str(avg_buy_order_size))
-        print("buy order std. dev: " + str(std_dev_buy_order_size))
-
-        print("average price: " + str(avg_price))
-        print("std. dev. of price: " + str(std_dev_price))
-
-        print("average sell order price: " + str(avg_sell_order_price))
-        print("std. dev. of sell order price: " + str(std_dev_sell_price))
-
-        print("average buy order price: " + str(avg_buy_price))
-        print("std. dev. of buy order price: " + str(std_dev_buy_order_price))
-
-
+        return stats
 
 
 def get_total(df: dd) -> int:

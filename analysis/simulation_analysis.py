@@ -1,15 +1,14 @@
 import logging
 from typing import List
 
-import dask.dataframe as dd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
 
 from data_loader import DataLoader
+from data_utils import DataUtils
 from graph_creator import GraphCreator
 from stats import Statistics
-from data_utils import DataUtils
 
 
 class SimulationAnalysis:
@@ -22,6 +21,8 @@ class SimulationAnalysis:
         self.root = root
         self.graph_creator = GraphCreator("Simulation " + data_desc)
 
+        self.all_sims = DataLoader().load_sim_data(self.root, 0, 100)
+
     def analyse(self):
         # logger.debug(self.dirs)
         # for directory in self.dirs:
@@ -32,7 +33,7 @@ class SimulationAnalysis:
         # self.graph_creator.graph_price_quantity(orders_df)
         self.graph_creator.graph_price_time(orders_df, "orders")
         # self.graph_creator.graph_time_delta(orders_df)
-        Statistics().calculate_stats(orders_df)
+        print(Statistics().get_order_stats(orders_df) + "\n")
         #
         trades_df = trades_dd.compute()
         self.graph_creator.graph_price_time(trades_df, "trades")
@@ -48,8 +49,7 @@ class SimulationAnalysis:
 
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
-        all_sims = DataLoader().load_sim_data(self.root, 0, 100)
-        time_prices_dict = self.extract_prices_at_times(all_sims, seconds_list)
+        time_prices_dict = self.extract_prices_at_times(self.all_sims, seconds_list)
         self.logger.debug(time_prices_dict)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
 

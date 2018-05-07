@@ -52,8 +52,11 @@ class RealAnalysis:
 
         params["distributions"] = distributions
 
-        # Buy/sell Ratio
-        params["buy_sell_ratio"] = Statistics.get_buy_sell_ratio(self.orders_df)
+        # Buy/sell Price Ratio
+        params["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
+
+        # Buy/sell Volume Ratio
+        params["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
 
         return params
 

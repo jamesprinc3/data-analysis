@@ -27,13 +27,11 @@ class DataLoader:
         :param root: directory that contains the output from OrderBookSimulator
         :param start_index: the (inclusive) index we wish to start from
         :param end_index: the (exclusive) index we wish to end on
-        :return:
+        :return: orders, trades, cancels DataFrames
         """
         data_root = root
         dirs = next(os.walk(data_root))[1]
 
-        # TODO: figure out what we want to do for multiple simulations!
-        # for directory in dirs:
         dirs_to_load = dirs[start_index:end_index]
         return_list = []
         for directory in dirs_to_load:

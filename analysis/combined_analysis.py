@@ -1,20 +1,23 @@
 import datetime
-import json
 import logging
+from datetime import timedelta
 
-from analysis.simulation_analysis import SimulationAnalysis
+import matplotlib.pyplot as plt
+import numpy as np
+import dask.dataframe as dd
+import pandas as pd
+
 from analysis.real_analysis import RealAnalysis
+from analysis.simulation_analysis import SimulationAnalysis
 from data_loader import DataLoader
 from data_splitter import DataSplitter
 from data_utils import DataUtils
 from stats import Statistics
-import matplotlib.pyplot as plt
-import numpy as np
-from datetime import timedelta
 
 
 class CombinedAnalysis:
-    def __init__(self, sim_root: str, real_root: str, start_time: datetime.datetime, sampling_window: int, simulation_window: int, product: str):
+    def __init__(self, sim_root: str, real_root: str, start_time: datetime.datetime, sampling_window: int,
+                 simulation_window: int, product: str, params_path: str):
         """
         Class which produces validation between the simulated data and the real data
         :param sim_root: root path of the simulated data
@@ -32,24 +35,27 @@ class CombinedAnalysis:
         self.sampling_window = sampling_window
         self.simulation_window = simulation_window
         self.product = product
+        self.params_path = params_path
+
+        self.sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
+        self.sampling_window_end_time = self.start_time
 
     def run_simulation(self):
-        sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
-        sampling_window_end_time = self.start_time
-        orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, sampling_window_start_time, sampling_window_end_time, self.product)
+        orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
+                                                                         self.sampling_window_end_time, self.product)
         real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
 
         params = real_analysis.generate_order_params()
 
-        real_analysis.params_to_file(params, "/Users/jamesprince/project-data/distributions.json")
+        real_analysis.params_to_file(params, self.params_path)
 
         pass
-
 
     def graph_real_prices_with_simulated_confidence_intervals(self):
         interval = 10  # seconds
         times = list(range(interval, self.simulation_window, interval))
-        confidence_intervals = self.sim_analysis.calculate_confidence_at_times(times)
+
+        confidence_intervals = self.sim_analysis.calculate_confidence_at_times(self.sim_analysis.all_sims, times)
         self.logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
@@ -64,14 +70,29 @@ class CombinedAnalysis:
         times = [0] + times
 
         # plot the data
-        self.__plot_mean_and_CI_and_real_values(mean0, ub0, lb0, times, real_times, real_prices, color_mean='k',
-                                         color_shading='k')
+        self.__plot_mean_and_ci_and_real_values(mean0, ub0, lb0, times, real_times, real_prices, color_mean='k',
+                                                color_shading='k')
 
         plt.show()
 
+    def print_stat_comparison(self):
+        real_orders, _, _ = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
+                                                          self.sampling_window_end_time, self.product)
+        sim_orders= self.sim_analysis.all_sims[0][0].compute()
+
+        real_stats = Statistics.get_order_stats(real_orders)
+        sim_stats = Statistics.get_order_stats(sim_orders)
+
+        print_str = ""
+
+        for k in real_stats.keys():
+            print_str += k + "\t\t\t\tReal: " + str(real_stats[k]) + "\t\t\tSim: " + str(sim_stats[k]) + "\n"
+
+        print(print_str)
+
     # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
-    def __plot_mean_and_CI_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
-                                         color_shading=None):
+    def __plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
+                                           color_shading=None):
         # plot the shaded range of the confidence intervals
         plt.figure(figsize=(12, 8))
         plt.ylim(8000, 9000)
@@ -86,13 +107,12 @@ class CombinedAnalysis:
         plt.legend()
 
     def __fetch_real_data(self):
-        df = DataLoader().load_real_data(self.real_root, self.start_time, self.start_time + timedelta(seconds=self.simulation_window))[['time', 'price', 'reason']]
+        df = DataLoader().load_real_data(self.real_root, self.start_time,
+                                         self.start_time + timedelta(seconds=self.simulation_window))[
+            ['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
 
         trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
         real_times = trades_df['time']
         real_prices = trades_df['price']
         return real_times, real_prices
-
-
-

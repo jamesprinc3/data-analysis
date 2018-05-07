@@ -36,8 +36,6 @@ if __name__ == "__main__":
                         help='file path to real data')
     parser.add_argument('--sim_root', metavar='-sd', type=str, nargs='?',
                         help='file path to the root of simulation data')
-    # parser.add_argument('--combined', metavar='y/n', type=str, nargs='?',
-    #                     help='(default no) boolean of whether to include combined analysis')
     parser.add_argument('--start_time', metavar='YYYY-MM-DDTHH:mm:SS', type=str, nargs='?',
                         help='time to start the simulation from')
     parser.add_argument('--sampling_window', metavar='int', type=int, nargs='?',
@@ -46,7 +44,7 @@ if __name__ == "__main__":
                         help='number of seconds after start_time to simulate')
     parser.add_argument('--product', metavar='BTC-USD', type=str, nargs='?',
                         help='name of the product being traded (e.g. "BTC-USD")')
-    parser.add_argument('--dist_path', metavar='Path', type=str, nargs='?',
+    parser.add_argument('--params_path', metavar='Path', type=str, nargs='?',
                         help='path to where you wish to output distribution params')
     add_boolean_argument(parser, "combined", False, "(default no) boolean of whether to include combined analysis")
     add_boolean_argument(parser, "graphs", False, "whether to display graphs")
@@ -63,7 +61,7 @@ if __name__ == "__main__":
     simulation_window = args.simulation_window
     combined = args.combined
     product = args.product
-    dist_path = args.dist_path
+    params_path = args.params_path
     graphs = args.graphs
     fit_distributions = args.fit_distributions
     run_simulation = args.run_simulation
@@ -71,15 +69,16 @@ if __name__ == "__main__":
     print(combined)
     print(args)
 
-    if combined and sim_root and real_root and start_time and sampling_window and simulation_window and product:
+    if combined and sim_root and real_root and start_time and sampling_window and simulation_window and product and params_path:
         start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
 
         combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window,
-                                             product)
+                                             product, params_path)
 
         if run_simulation:
             combined_analysis.run_simulation()
         if graphs:
+            combined_analysis.print_stat_comparison()
             combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
     else:
         if real_root and start_time and sampling_window and product:
@@ -90,9 +89,9 @@ if __name__ == "__main__":
                                                                              sampling_window_end_time, product)
             real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
 
-            if fit_distributions and dist_path:
+            if fit_distributions and param_path:
                 params = real_analysis.generate_order_params()
-                real_analysis.params_to_file(params, dist_path)
+                real_analysis.params_to_file(params, param_path)
             if graphs:
                 real_analysis.generate_graphs()
 

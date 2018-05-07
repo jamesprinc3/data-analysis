@@ -6,9 +6,8 @@ import pandas as pd
 
 from data_splitter import DataSplitter
 from data_transformer import DataTransformer
-from distribution_fitter import DistributionFitter
-from stats import Statistics
 from data_utils import DataUtils
+from distribution_fitter import DistributionFitter
 
 
 class GraphCreator:
@@ -102,8 +101,8 @@ class GraphCreator:
         plt.title(self.data_description + " " + data_desc + ' price')
 
     def graph_order_cancel_relative_price_distribution(self, feed_df):
-        trades_df = Statistics.get_trades(feed_df)
-        cancels_df = Statistics.get_cancellations(feed_df)
+        trades_df = DataSplitter.get_trades(feed_df)
+        cancels_df = DataSplitter.get_cancellations(feed_df)
         self.graph_relative_price_distribution(trades_df, cancels_df)
 
 

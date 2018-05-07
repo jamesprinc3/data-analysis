@@ -42,7 +42,7 @@ class DistributionFitter:
 
         DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2, st.f, st.gamma, st.gumbel_r,
                          st.gumbel_l, st.expon, st.laplace, st.pareto, st.poisson,
-                         st.lognorm, st.norm, st.vonmises] #, st.weibull_min, st.weibull_max] #st.loggamma,
+                         st.lognorm, st.norm, st.vonmises]  # , st.weibull_min, st.weibull_max] #st.loggamma,
 
         # DISTRIBUTIONS = [st.expon]
 
@@ -62,7 +62,6 @@ class DistributionFitter:
 
                     # fit dist to data
                     params = distribution.fit(data)
-
 
                     # Separate parts of parameters
                     arg = params[:-2]
@@ -163,11 +162,12 @@ class DistributionFitter:
         # Get the name and params of the best fit
         best_dist, dist_str = self.get_distribution_string(best_fit, best_fit_params)
 
-        # Make PDF
-        pdf = self.make_pdf(best_dist, best_fit_params)
-
         # Display
+        self.plot_data_with_distribution(data, best_dist, best_fit_params,  dist_str, data_desc, xlabel, bins=200)
+
+    def plot_data_with_distribution(self, data, dist, fit_params,  dist_str: str, data_desc: str, xlabel: str, bins=200):
         plt.figure(figsize=(12, 8))
+        pdf = self.make_pdf(dist, fit_params)
         ax = pdf.plot(lw=2, label='PDF', legend=True)
         data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
 
