@@ -38,3 +38,7 @@ class DataSplitter:
     @staticmethod
     def get_cancellations(df: dd) -> dd:
         return df[df['reason'] == 'canceled']
+
+    @staticmethod
+    def get_product(product: str, df: dd) -> dd:
+        return df[df['product_id'] == product]

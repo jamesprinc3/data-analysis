@@ -1,8 +1,11 @@
+import logging
+
 import dask.dataframe as dd
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from data_splitter import DataSplitter
+from data_transformer import DataTransformer
 from distribution_fitter import DistributionFitter
 from stats import Statistics
 from data_utils import DataUtils
@@ -11,10 +14,11 @@ from data_utils import DataUtils
 class GraphCreator:
     def __init__(self, data_desc: str):
         self.data_description = data_desc
+        self.logger = logging.getLogger()
 
-    def graph_time_delta(self, orders_df: dd):
+    def graph_interval(self, orders_df: dd):
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
-        logger.debug(order_time_delta_df)
+        self.logger.debug(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
         self.graph_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
 
@@ -30,8 +34,8 @@ class GraphCreator:
         self.graph_distribution(result, self.data_description + ' Trade Order Size', 'Trade Order Size')
 
     def graph_sides(self, df: dd) -> None:
-        btc_usd_price_buy = pd.Series(Statistics().get_side('buy', df)['price'].astype('float64').tolist())
-        btc_usd_price_sell = pd.Series(Statistics().get_side('sell', df)['price'].astype('float64').tolist())
+        btc_usd_price_buy = pd.Series(DataSplitter.get_side('buy', df)['price'].astype('float64').tolist())
+        btc_usd_price_sell = pd.Series(DataSplitter.get_side('sell', df)['price'].astype('float64').tolist())
 
         self.graph_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
         self.graph_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
@@ -59,30 +63,31 @@ class GraphCreator:
     # TODO: calculate price % difference (so that we can compare these distributions between currencies or points in time where the price is very different
     # TODO: make this use the mid price as calculated by what the order book actually looks like
     def graph_relative_price_distribution(self, trades_df: dd, other_df: dd, num_bins=100):
-        price_over_time: dd = Statistics().get_price_over_time(trades_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
 
-        buy_df = DataSplitter.get_side("buy", other_df)
-        buy_df = DataUtils.fuzzy_join(buy_df, price_over_time)
-        # Flip the distribution around so that we can actually fit it to something breeze can sample from
-        buy_df['relative_price'] = buy_df['relative_price'].apply(lambda x: -x)
+        buy_orders = DataSplitter.get_side("buy", other_df)
+        sell_orders = DataSplitter.get_side("sell", other_df)
 
-        sell_df = DataSplitter.get_side("sell", other_df)
-        sell_df = DataUtils.fuzzy_join(sell_df, price_over_time)
+        buy_prices = DataTransformer.get_relative_prices(trades_df, buy_orders)
+        buy_prices = buy_prices.apply(lambda x: -x)
+        sell_prices = DataTransformer.get_relative_prices(trades_df, sell_orders)
+
+        print(buy_prices)
+        print(sell_prices)
 
         # Graphing
         plt.figure(figsize=(12, 8))
 
-        self.graph_distribution(buy_df['relative_price'], self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
-        self.graph_distribution(sell_df['relative_price'], self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
+        self.graph_distribution(buy_prices, self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
+        self.graph_distribution(sell_prices, self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
 
     def graph_price_time(self, df: dd, data_desc: str):
         #
         y = df['price'].astype('float64').fillna(method='ffill')
-        logger.debug(y)
-        logger.debug(df['time'].astype('datetime64[ns]'))
+        self.logger.debug(y)
+        self.logger.debug(df['time'].astype('datetime64[ns]'))
         times = df['time'].astype('datetime64[ns]').apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
         start_time = times.min()
-        logger.debug("start_time " + str(start_time))
+        self.logger.debug("start_time " + str(start_time))
         x = times.apply(lambda z: (z - start_time) / 1e6)
         # logger.debug(x)
 

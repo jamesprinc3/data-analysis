@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import dask.dataframe as dd
@@ -17,6 +18,7 @@ class SimulationAnalysis:
         :param root: The data root for the output from OrderBookSimulator
         :param data_desc: A description of what data is being analysed (to be eventually outputted on graphs)
         """
+        self.logger = logging.getLogger()
         self.root = root
         self.graph_creator = GraphCreator("Simulation " + data_desc)
 
@@ -35,12 +37,10 @@ class SimulationAnalysis:
         trades_df = trades_dd.compute()
         self.graph_creator.graph_price_time(trades_df, "trades")
 
-        # cancels_df = pd.read_csv(cancels_path)
-        # logger.debug("cancels df")
-        # logger.debug(cancels_df)
         # self.graph_creator.graph_relative_price_distribution(trades_df, cancels_df, 20)
 
         self.graph_creator.graph_relative_price_distribution(trades_df, orders_df, 20)
+        self.graph_creator.graph_interval(orders_df)
 
         # graphs.graph_price_quantity(trades_df)
 
@@ -50,7 +50,7 @@ class SimulationAnalysis:
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
         all_sims = DataLoader().load_sim_data(self.root, 0, 100)
         time_prices_dict = self.extract_prices_at_times(all_sims, seconds_list)
-        logger.debug(time_prices_dict)
+        self.logger.debug(time_prices_dict)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
 
         return time_confidence_dict

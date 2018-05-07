@@ -42,7 +42,9 @@ class DistributionFitter:
 
         DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2, st.f, st.gamma, st.gumbel_r,
                          st.gumbel_l, st.expon, st.laplace, st.pareto, st.poisson,
-                         st.lognorm, st.norm, st.vonmises, st.weibull_min, st.weibull_max] #st.loggamma,
+                         st.lognorm, st.norm, st.vonmises] #, st.weibull_min, st.weibull_max] #st.loggamma,
+
+        # DISTRIBUTIONS = [st.expon]
 
         # Best holders
         best_distribution = st.norm

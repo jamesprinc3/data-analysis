@@ -1,15 +1,14 @@
+import json
 from typing import List
 
-import matplotlib.pyplot as plt
 import dask.dataframe as dd
+import matplotlib.pyplot as plt
 
-from data_loader import DataLoader
-from data_splitter import DataSplitter
 from data_transformer import DataTransformer
+from data_utils import DataUtils
 from distribution_fitter import DistributionFitter
 from graph_creator import GraphCreator
 from stats import Statistics
-from data_utils import DataUtils
 
 
 class RealAnalysis:
@@ -23,18 +22,23 @@ class RealAnalysis:
     def secs_to_nanos(secs) -> int:
         return secs * 10 ** 9
 
+    @staticmethod
+    def params_to_file(params: dict, file_path: str):
+        with open(file_path, 'w') as fp:
+            json.dump(params, fp)
+
     def generate_order_params(self):
         params = {}
         distributions = {}
-        relative_order_price_distributions = DataTransformer.relative_price_distribution(self.trades_df, self.orders_df)
+        relative_order_price_distributions = DataTransformer.relative_price_distributions(self.trades_df, self.orders_df)
 
         # Buy/sell Price
         distributions["buy_price"] = relative_order_price_distributions["buy"][1]
         distributions["sell_price"] = relative_order_price_distributions["sell"][1]
 
         # Buy/sell price Cancellation
-        relative_cancel_price_distributions = DataTransformer.relative_price_distribution(self.trades_df,
-                                                                                          self.cancels_df)
+        relative_cancel_price_distributions = DataTransformer.relative_price_distributions(self.trades_df,
+                                                                                           self.cancels_df)
         distributions["buy_cancel_price"] = relative_cancel_price_distributions["buy"][1]
         distributions["sell_cancel_price"] = relative_cancel_price_distributions["sell"][1]
 
@@ -65,27 +69,10 @@ class RealAnalysis:
 
         # TODO: include the time in the data_descriptions
         graph_creator = GraphCreator("Real BTC-USD")
-        num_seconds = 10
 
-        # graph_creator.graph_price_time(self.orders_df, "orders")
-        # Statistics().calculate_feed_stats(orders_df)
-
-
-        # graph_creator.graph_price_time(Statistics.get_trades(btc_usd_df))
-        # graph_creator.graph_order_sizes(orders_df)
-        # graph_creator.graph_price_quantity(orders_df)
-        # graph_creator.graph_time_delta(orders_df)
-
-        # graph_creator.graph_order_cancel_relative_price_distribution(btc_usd_df)
-
-        # graph_creator.graph_price_time(self.trades_df, "trades")
-
-        # graph_creator.graph_sides(Statistics.get_orders(btc_usd_df))
-        # Statistics().get_price_over_time(btc_usd_df)
-        # graph_creator.graph_order_relative_price_distribution(btc_usd_df)
-        # graph_creator.graph_time_delta(Statistics.get_orders(btc_usd_df))
-
+        graph_creator.graph_sides(self.orders_df)
         graph_creator.graph_relative_price_distribution(self.trades_df, self.orders_df, 100)
+        graph_creator.graph_interval(self.orders_df)
 
         plt.show()
 

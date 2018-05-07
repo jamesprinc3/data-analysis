@@ -74,8 +74,9 @@ class DataLoader:
         return feed_df
 
     @staticmethod
-    def load_sampling_data(real_root, start_time, end_time):
+    def load_sampling_data(real_root, start_time, end_time, product):
         feed_df = DataLoader().load_real_data(real_root, start_time, end_time)
+        feed_df = DataSplitter.get_product("BTC-USD", feed_df)
 
         orders_df = DataSplitter.get_orders(feed_df)
         trades_df = DataSplitter.get_trades(feed_df)
