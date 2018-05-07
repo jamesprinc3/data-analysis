@@ -1,12 +1,18 @@
 import datetime
+import logging
+
 import dask.dataframe as dd
-import stats
-from graph_creator import GraphCreator
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from data_splitter import DataSplitter
+from graph_creator import GraphCreator
 from stats import Statistics
 
+
 class OrderBook:
+
+    logger = logging.getLogger()
 
     @staticmethod
     def reconstruct_orderbook(feed: dd, at: datetime.datetime) -> dd:
@@ -14,17 +20,14 @@ class OrderBook:
         # Filter out orders/trades which arrived after the time we are interested in
         valid_messages = feed[feed['time'] < at.isoformat()]
 
-        trades = Statistics.get_trades(valid_messages)
-        logger.debug("trade min: " + str(trades['price'].astype('float').min()))
-        logger.debug("trade max: " + str(trades['price'].astype('float').max()))
-        cancellations = Statistics.get_cancellations(valid_messages)
-        orders = Statistics.get_orders(valid_messages)
+        trades = DataSplitter.get_trades(valid_messages)
+        cancellations = DataSplitter.get_cancellations(valid_messages)
+        orders = DataSplitter.get_orders(valid_messages)
 
         # Find those orders which are no longer on the book
         # TODO: find those orders which were modified, handle carefully
         executed_order_ids = trades['order_id'].unique()
         cancelled_order_ids = cancellations['order_id'].unique()
-        # logger.debug(executed_order_ids)
 
         # Find those orders which are still on the book
         remaining_orders = orders[~orders['order_id'].isin(executed_order_ids)
@@ -37,6 +40,7 @@ class OrderBook:
         orderbook.sort_values(by='price')
         orderbook.to_csv(file_path)
 
+
 input_file = "/Users/jamesprince/project-data/2018-03-25.parquet"
 output_file = "/Users/jamesprince/project-data/orderbook-2018-03-25-01:00:00.csv"
 
@@ -44,7 +48,6 @@ feed = dd.read_parquet(input_file)
 btc_usd_feed = feed[feed['product_id'] == 'BTC-USD'].reset_index(drop=True).compute()
 # logger.debug(btc_usd_feed)
 time = datetime.datetime(year=2018, month=3, day=25, hour=1)
-logger.debug(time)
 orderbook = OrderBook.reconstruct_orderbook(btc_usd_feed, time)
 # logger.debug(orderbook)
 # stats.calculate_stats(orderbook)
