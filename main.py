@@ -2,65 +2,82 @@ import argparse
 import configparser
 import datetime
 import logging
-from logging.config import fileConfig
 
 import dask.dataframe as dd
 
+from logging.config import fileConfig
+from analysis.combined_analysis import CombinedAnalysis
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
-from analysis.combined_analysis import CombinedAnalysis
 from data_loader import DataLoader
 
+
+def combined_mode(start_time: datetime.datetime):
+    combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window,
+                                         product, params_path)
+
+    if run_simulation:
+        combined_analysis.run_simulation()
+    if graphs:
+        combined_analysis.print_stat_comparison()
+        combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
+
+
+def real_mode(start_time: datetime.datetime):
+    sampling_window_start_time = start_time - datetime.timedelta(seconds=sampling_window)
+    sampling_window_end_time = start_time
+    orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, sampling_window_start_time,
+                                                                     sampling_window_end_time, product)
+    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + product)
+
+    if fit_distributions and params_path:
+        params = real_analysis.generate_order_params()
+        real_analysis.params_to_file(params, params_path)
+    if graphs:
+        real_analysis.generate_graphs()
+
+
+def simulation_mode():
+    print(sim_root)
+    SimulationAnalysis(sim_root, product).analyse()
+
+
 if __name__ == "__main__":
-    fileConfig('logging_config.ini')
+    fileConfig('config/logging_config.ini')
     logger = logging.getLogger()
 
+    parser = argparse.ArgumentParser(description='Analyse level III order book data')
+    parser.add_argument('--config', metavar='path', type=str, nargs='?',
+                        help='path to config file')
+    args = parser.parse_args()
+
     config = configparser.ConfigParser()
-    config.read('combined.ini')
+    config.read(args.config)
 
     real_root = config['paths']['real_root']
     sim_root = config['paths']['sim_root']
     params_path = config['paths']['params_path']
 
-    sampling_window = config['window']['sampling']
-    simulation_window = config['window']['simulation']
+    sampling_window = int(config['window']['sampling'])
+    simulation_window = int(config['window']['simulation'])
 
     start_time = config['data']['start_time']
+    start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
     product = config['data']['product']
 
-    combined = config['bools']['combined']
-    graphs = config['bools']['graphs']
-    run_simulation = config['bools']['run_simulation']
-    fit_distributions = config['bools']['fit_distributions']
+    mode = config['behaviour']['mode']
+    graphs = config['behaviour']['graphs']
+    run_simulation = config['behaviour']['run_simulation']
+    fit_distributions = config['behaviour']['fit_distributions']
 
-    if combined and sim_root and real_root and start_time and sampling_window and simulation_window and product and params_path:
-        start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+    print(mode)
 
-        combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window,
-                                             product, params_path)
-
-        if run_simulation:
-            combined_analysis.run_simulation()
-        if graphs:
-            combined_analysis.print_stat_comparison()
-            combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
-    else:
-        if real_root and start_time and sampling_window and product:
-            start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-            sampling_window_start_time = start_time - datetime.timedelta(seconds=sampling_window)
-            sampling_window_end_time = start_time
-            orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, sampling_window_start_time,
-                                                                             sampling_window_end_time, product)
-            real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
-
-            if fit_distributions and params_path:
-                params = real_analysis.generate_order_params()
-                real_analysis.params_to_file(params, params_path)
-            if graphs:
-                real_analysis.generate_graphs()
-
-        if sim_root:
-            SimulationAnalysis(sim_root, "BTC-USD").analyse()
+    if mode == "combined":
+        combined_mode(start_time)
+    elif mode == "real":
+        real_mode(start_time)
+    elif mode == "simulation":
+        simulation_mode()
 
 
 def sides(df: dd) -> (int, int):

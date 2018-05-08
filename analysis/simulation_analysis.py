@@ -33,7 +33,7 @@ class SimulationAnalysis:
         # self.graph_creator.graph_price_quantity(orders_df)
         self.graph_creator.graph_price_time(orders_df, "orders")
         # self.graph_creator.graph_time_delta(orders_df)
-        print(Statistics().get_order_stats(orders_df) + "\n")
+        print(Statistics().get_order_stats(orders_df))
         #
         trades_df = trades_dd.compute()
         self.graph_creator.graph_price_time(trades_df, "trades")
