@@ -35,16 +35,22 @@ class Statistics:
         return df[col_name].astype('float64').std()
 
     @staticmethod
+    def get_ratio(a: float, b: float):
+        total = a+b
+
+        a_ratio = a / total
+        b_ratio = b / total
+
+        return a_ratio, b_ratio
+
+    @staticmethod
     def get_buy_sell_order_ratio(df: dd) -> (float, float):
         print(df)
 
         num_buys = len(DataSplitter.get_side("buy", df))
         num_sells = len(DataSplitter.get_side("sell", df))
 
-        buy_ratio = num_buys / (num_buys + num_sells)
-        sell_ratio = num_sells / (num_buys + num_sells)
-
-        return buy_ratio, sell_ratio
+        return Statistics.get_ratio(num_buys, num_sells)
 
     @staticmethod
     def get_buy_sell_volume_ratio(df: dd):
@@ -54,13 +60,17 @@ class Statistics:
         buy_vol = buys['size'].sum()
         sell_vol = sells['size'].sum()
 
-        total_vol = buy_vol + sell_vol
+        return Statistics.get_ratio(buy_vol, sell_vol)
 
-        buy_vol_ratio = pd.to_numeric(buy_vol / total_vol)
-        sell_vol_ratio = sell_vol / total_vol
+    @staticmethod
+    def get_limit_market_order_ratio(df: dd):
+        limits = DataSplitter.get_limit_orders(df)
+        markets = DataSplitter.get_market_orders(df)
 
-        return buy_vol_ratio, sell_vol_ratio
+        num_limits = len(limits)
+        num_markets = len(markets)
 
+        return Statistics.get_ratio(num_limits, num_markets)
 
     # PRE: df must be trades only
     @staticmethod

@@ -58,6 +58,8 @@ class RealAnalysis:
         # Buy/sell Volume Ratio
         params["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
 
+        params['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(self.orders_df)
+
         return params
 
     def generate_graphs(self):

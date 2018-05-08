@@ -36,6 +36,16 @@ class DataSplitter:
         return df[df['type'] == 'received']
 
     @staticmethod
+    def get_limit_orders(df: dd) -> dd:
+        orders = DataSplitter.get_orders(df)
+        return orders[orders['order_type'] == 'limit']
+
+    @staticmethod
+    def get_market_orders(df: dd) -> dd:
+        orders = DataSplitter.get_orders(df)
+        return orders[orders['order_type'] == 'market']
+
+    @staticmethod
     def get_cancellations(df: dd) -> dd:
         return df[df['reason'] == 'canceled']
 
