@@ -14,8 +14,9 @@ from orderbook import OrderBook
 
 
 def combined_mode(start_time: datetime.datetime):
-    combined_analysis = CombinedAnalysis(sim_root, real_root, start_time, sampling_window, simulation_window,
-                                         product, params_path)
+    combined_analysis = CombinedAnalysis(sim_root, real_root, start_time,
+                                         sampling_window, simulation_window,
+                                         orderbook_window, product, params_path)
 
     if run_simulation:
         combined_analysis.run_simulation()
@@ -82,9 +83,13 @@ if __name__ == "__main__":
     product = config['data']['product']
 
     mode = config['behaviour']['mode']
-    graphs = config['behaviour']['graphs']
-    run_simulation = config['behaviour']['run_simulation']
-    fit_distributions = config['behaviour']['fit_distributions']
+    graphs = config['behaviour'].getboolean('graphs')
+    run_simulation = config['behaviour'].getboolean('run_simulation')
+    fit_distributions = config['behaviour'].getboolean('fit_distributions')
+
+    print(graphs)
+    print(run_simulation)
+    print(fit_distributions)
 
     print(mode)
 

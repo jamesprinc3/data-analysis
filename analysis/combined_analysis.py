@@ -1,11 +1,10 @@
 import datetime
 import logging
+import subprocess
 from datetime import timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
-import dask.dataframe as dd
-import pandas as pd
 
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
@@ -14,12 +13,13 @@ from data_splitter import DataSplitter
 from data_utils import DataUtils
 from graph_creator import GraphCreator
 from orderbook import OrderBook
+from sim_config import SimConfig
 from stats import Statistics
 
 
 class CombinedAnalysis:
     def __init__(self, sim_root: str, real_root: str, start_time: datetime.datetime, sampling_window: int,
-                 simulation_window: int, product: str, params_path: str):
+                 simulation_window: int, orderbook_window: int, product: str, params_path: str):
         """
         Class which produces validation between the simulated data and the real data
         :param sim_root: root path of the simulated data
@@ -27,47 +27,95 @@ class CombinedAnalysis:
         :param start_time: datetime which
         :param sampling_window: number of seconds before start_time to sample from
         :param simulation_window: number of seconds after start_time to simulate
+        :param orderbook_window: number of seconds before start_time to analyse to get state of the orderbook
         """
         self.logger = logging.getLogger()
-        self.sim_analysis = SimulationAnalysis(sim_root, "Combined Analysis")
 
         self.real_root = real_root
+        self.sim_root = sim_root
+
         self.start_time = start_time
-        self.logger.debug(start_time)
         self.sampling_window = sampling_window
         self.simulation_window = simulation_window
+        self.orderbook_window = orderbook_window
+
         self.product = product
         self.params_path = params_path
 
         self.sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
         self.sampling_window_end_time = self.start_time
 
-        self.orderbook_window_start_time = start_time - datetime.timedelta(seconds=orderbook_window)
+        self.orderbook_window_start_time = start_time - datetime.timedelta(seconds=self.orderbook_window)
         self.orderbook_window_end_time = start_time
 
     def run_simulation(self):
+        # Get parameters
         orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
                                                                          self.sampling_window_end_time, self.product)
         real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
         params = real_analysis.generate_order_params()
         real_analysis.params_to_file(params, self.params_path)
 
+        self.logger.info("Parameters saved to: " + self.params_path)
+
+        # Get orderbook
         orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, self.orderbook_window_start_time,
                                                                          self.orderbook_window_end_time, self.product)
 
         orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
-        output_file = "/Users/jamesprince/project-data/orderbook-" + self.orderbook_window_end_time.isoformat() + ".csv"
-        OrderBook.orderbook_to_file(orderbook, output_file)
+        # TODO: remove this magic string
+        orderbook_path = "/Users/jamesprince/project-data/orderbook-" + self.orderbook_window_end_time.isoformat() + ".csv"
+        OrderBook.orderbook_to_file(orderbook, orderbook_path)
 
-        self.logger.info("Orderbook saved to: " + output_file)
+        self.logger.info("Orderbook saved to: " + orderbook_path)
 
-        pass
+        # Generate .conf file
+        # TODO: generate this in a function further up the chain
+        config = {'paths': {
+            'simRoot': "/Users/jamesprince/project-data/sims/",
+            'params': "/Users/jamesprince/project-data/parameters.json",
+            'orderbook': orderbook_path
+            },
 
-    def graph_real_prices_with_simulated_confidence_intervals(self):
+            'execution': {
+                'numSimulations': 10,
+                'parallel': True,
+                'logLevel': "INFO"
+            },
+
+            'orderbook': {
+                'stp': False
+            }}
+        config_string = SimConfig.generate_config_string(config)
+        config_path = "/Users/jamesprince/project-data/analysis.conf"
+        f = open(config_path, 'w')
+        f.write(config_string)
+        f.close()
+
+        self.logger.info("Wrote sim config to: " + config_path)
+
+        # Start simulation
+        # TODO: remove hard path
+        jar_path = '/Users/jamesprince/project-data/orderbooksimulator_jar/orderbooksimulator.jar'
+        bash_command = "java -jar " + jar_path + " " + config_path
+
+        process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+        self.logger.info("Running simulations")
+        print(str(output))
+
+        process.wait()
+        self.logger.info("Simulations complete")
+
+        # Validate
+        sim_analysis = SimulationAnalysis(self.sim_root, "Combined Analysis")
+        self.graph_real_prices_with_simulated_confidence_intervals(sim_analysis)
+
+    def graph_real_prices_with_simulated_confidence_intervals(self, sim_analysis: SimulationAnalysis):
         interval = 10  # seconds
         times = list(range(interval, self.simulation_window, interval))
 
-        confidence_intervals = self.sim_analysis.calculate_confidence_at_times(times)
+        confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         print(confidence_intervals)
         self.logger.debug(confidence_intervals)
 

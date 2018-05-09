@@ -36,11 +36,3 @@ class TestGenerateConfigString(TestCase):
         config_str = SimConfig.generate_config_string(config)
 
         assert config_str == "execution {\n\tnumSimulations = 10\n}\n\npaths {\n\ttestPath = \"test/path\"\n}"
-
-# execution {
-# 	numSimulations = 10
-# }
-#
-# paths {
-# 	testPath = "test/path"
-# }
