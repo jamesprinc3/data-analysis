@@ -65,6 +65,7 @@ class SimulationAnalysis:
             trades_df = trades_dd.compute()
             for seconds in seconds_list:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
+                print(price)
                 time_prices_dict[seconds].append(price)
             sim_index += 1
         return time_prices_dict

@@ -49,7 +49,7 @@ class DataLoader:
 
         return return_list
 
-    def load_real_data(self, root, start_time: datetime, end_time: datetime) -> dd:
+    def load_real_data(self, root, start_time: datetime, end_time: datetime, product) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""
         # Assume data is on the same day and just hours apart for now
         hour_delta = end_time.hour - start_time.hour
@@ -64,6 +64,7 @@ class DataLoader:
         for filename in files_to_load:
             file_path = root + filename
             file_df = pd.read_parquet(file_path)
+            file_df = DataSplitter.get_product(product, file_df)
             file_df = DataLoader().format_dd(file_df)
             file_df = file_df[start_time < file_df['time']]
             file_df = file_df[file_df['time'] < end_time]
@@ -73,8 +74,8 @@ class DataLoader:
 
     @staticmethod
     def load_sampling_data(real_root, start_time, end_time, product):
-        feed_df = DataLoader().load_real_data(real_root, start_time, end_time)
-        feed_df = DataSplitter.get_product("BTC-USD", feed_df)
+        feed_df = DataLoader().load_real_data(real_root, start_time, end_time, product)
+        feed_df = DataSplitter.get_product(product, feed_df)
 
         orders_df = DataSplitter.get_orders(feed_df)
         trades_df = DataSplitter.get_trades(feed_df)

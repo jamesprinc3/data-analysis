@@ -31,6 +31,7 @@ class DataUtils:
         local_df = trades_df.copy()
         local_df['time'] = DataUtils().get_times_in_seconds_after_start(local_df['time'])
         # logger.debug(local_df['time'])
+        print(seconds)
         trades_before = local_df[local_df['time'] < seconds]
         return trades_before['price'].iloc[-1]
 

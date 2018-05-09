@@ -4,6 +4,7 @@ from typing import List
 import dask.dataframe as dd
 import matplotlib.pyplot as plt
 
+from data_splitter import DataSplitter
 from data_transformer import DataTransformer
 from data_utils import DataUtils
 from distribution_fitter import DistributionFitter
@@ -42,18 +43,27 @@ class RealAnalysis:
         distributions["buy_cancel_price"] = relative_cancel_price_distributions["buy"][1]
         distributions["sell_cancel_price"] = relative_cancel_price_distributions["sell"][1]
 
-        # Quantity
-        quantity_best_fit, quantity_best_fit_params = DistributionFitter.best_fit_distribution(self.orders_df['size'])
-        _, distributions["quantity"] = DistributionFitter.get_distribution_string(quantity_best_fit,
-                                                                                  quantity_best_fit_params)
+        # Limit/ Market Order Size
+        limit_orders = DataSplitter.get_limit_orders(self.orders_df)
+        limit_size_best_fit, limit_size_best_fit_params = DistributionFitter.best_fit_distribution(limit_orders['size'])
+        _, distributions["limit_size"] = DistributionFitter.get_distribution_string(limit_size_best_fit,
+                                                                                    limit_size_best_fit_params)
+
+        market_orders = DataSplitter.get_market_orders(self.orders_df)
+        market_size_best_fit, market_size_best_fit_params = DistributionFitter.best_fit_distribution(market_orders['size'])
+        _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
+                                                                                    market_size_best_fit_params)
 
         # Interval
         _, distributions["interval"] = DataTransformer.intervals_distribution(self.orders_df)
 
         params["distributions"] = distributions
 
-        # Buy/sell Price Ratio
+        # Buy/sell Order Ratio
         params["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
+
+        # Buy/sell Order Ratio
+        params["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
 
         # Buy/sell Volume Ratio
         params["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
@@ -75,9 +85,10 @@ class RealAnalysis:
         # TODO: include the time in the data_descriptions
         graph_creator = GraphCreator("Real BTC-USD")
 
-        graph_creator.graph_sides(self.orders_df)
-        graph_creator.graph_relative_price_distribution(self.trades_df, self.orders_df, 100)
-        graph_creator.graph_interval(self.orders_df)
+        # graph_creator.graph_sides(self.orders_df)
+        # graph_creator.graph_relative_price_distribution(self.trades_df, self.orders_df, 100)
+        # graph_creator.graph_interval(self.orders_df)
+        graph_creator.graph_price_time(self.trades_df, "Price over time")
 
         plt.show()
 

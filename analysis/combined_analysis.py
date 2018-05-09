@@ -12,6 +12,8 @@ from analysis.simulation_analysis import SimulationAnalysis
 from data_loader import DataLoader
 from data_splitter import DataSplitter
 from data_utils import DataUtils
+from graph_creator import GraphCreator
+from orderbook import OrderBook
 from stats import Statistics
 
 
@@ -40,14 +42,24 @@ class CombinedAnalysis:
         self.sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
         self.sampling_window_end_time = self.start_time
 
+        self.orderbook_window_start_time = start_time - datetime.timedelta(seconds=orderbook_window)
+        self.orderbook_window_end_time = start_time
+
     def run_simulation(self):
         orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
                                                                          self.sampling_window_end_time, self.product)
         real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
-
         params = real_analysis.generate_order_params()
-
         real_analysis.params_to_file(params, self.params_path)
+
+        orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(self.real_root, self.orderbook_window_start_time,
+                                                                         self.orderbook_window_end_time, self.product)
+
+        orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
+        output_file = "/Users/jamesprince/project-data/orderbook-" + self.orderbook_window_end_time.isoformat() + ".csv"
+        OrderBook.orderbook_to_file(orderbook, output_file)
+
+        self.logger.info("Orderbook saved to: " + output_file)
 
         pass
 
@@ -55,7 +67,8 @@ class CombinedAnalysis:
         interval = 10  # seconds
         times = list(range(interval, self.simulation_window, interval))
 
-        confidence_intervals = self.sim_analysis.calculate_confidence_at_times(self.sim_analysis.all_sims, times)
+        confidence_intervals = self.sim_analysis.calculate_confidence_at_times(times)
+        print(confidence_intervals)
         self.logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
@@ -78,7 +91,7 @@ class CombinedAnalysis:
     def print_stat_comparison(self):
         real_orders, _, _ = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
                                                           self.sampling_window_end_time, self.product)
-        sim_orders= self.sim_analysis.all_sims[0][0].compute()
+        sim_orders = self.sim_analysis.all_sims[0][0].compute()
 
         real_stats = Statistics.get_order_stats(real_orders)
         sim_stats = Statistics.get_order_stats(sim_orders)
@@ -95,7 +108,7 @@ class CombinedAnalysis:
                                            color_shading=None):
         # plot the shaded range of the confidence intervals
         plt.figure(figsize=(12, 8))
-        plt.ylim(8000, 9000)
+        # plt.ylim(8000, 9000)
         plt.title("BTC-USD Price prediction")
         plt.xlabel("Time (seconds)")
         plt.ylabel("Price ($)")
@@ -108,9 +121,13 @@ class CombinedAnalysis:
 
     def __fetch_real_data(self):
         df = DataLoader().load_real_data(self.real_root, self.start_time,
-                                         self.start_time + timedelta(seconds=self.simulation_window))[
-            ['time', 'price', 'reason']]
+                                         self.start_time + timedelta(seconds=self.simulation_window), self.product)
+        # [['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
+
+        print(trades_df)
+
+        GraphCreator("BTC").graph_price_time(trades_df, "BTC")
 
         trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
         real_times = trades_df['time']

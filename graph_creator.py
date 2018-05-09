@@ -96,7 +96,7 @@ class GraphCreator:
 
         plt.xlabel('Time (ms)')
         plt.ylabel('Price ($)')
-        plt.ylim(7000, 10000)
+        # plt.ylim(7000, 10000)
 
         plt.title(self.data_description + " " + data_desc + ' price')
 

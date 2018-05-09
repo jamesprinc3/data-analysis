@@ -38,6 +38,9 @@ class Statistics:
     def get_ratio(a: float, b: float):
         total = a+b
 
+        if total == 0:
+            return 0, 0
+
         a_ratio = a / total
         b_ratio = b / total
 
@@ -45,8 +48,6 @@ class Statistics:
 
     @staticmethod
     def get_buy_sell_order_ratio(df: dd) -> (float, float):
-        print(df)
-
         num_buys = len(DataSplitter.get_side("buy", df))
         num_sells = len(DataSplitter.get_side("sell", df))
 

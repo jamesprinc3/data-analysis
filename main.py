@@ -10,6 +10,7 @@ from analysis.combined_analysis import CombinedAnalysis
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
 from data_loader import DataLoader
+from orderbook import OrderBook
 
 
 def combined_mode(start_time: datetime.datetime):
@@ -42,6 +43,20 @@ def simulation_mode():
     SimulationAnalysis(sim_root, product).analyse()
 
 
+def orderbook_mode():
+    orderbook_window_start_time = start_time - datetime.timedelta(seconds=orderbook_window)
+    orderbook_window_end_time = start_time
+
+    orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, orderbook_window_start_time,
+                                                                     orderbook_window_end_time, product)
+
+    orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
+    output_file = "/Users/jamesprince/project-data/orderbook-" + orderbook_window_end_time.isoformat() + ".csv"
+    OrderBook.orderbook_to_file(orderbook, output_file)
+
+    logger.info("Orderbook saved to: " + output_file)
+
+
 if __name__ == "__main__":
     fileConfig('config/logging_config.ini')
     logger = logging.getLogger()
@@ -60,6 +75,7 @@ if __name__ == "__main__":
 
     sampling_window = int(config['window']['sampling'])
     simulation_window = int(config['window']['simulation'])
+    orderbook_window = int(config['window']['orderbook'])
 
     start_time = config['data']['start_time']
     start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
@@ -78,6 +94,8 @@ if __name__ == "__main__":
         real_mode(start_time)
     elif mode == "simulation":
         simulation_mode()
+    elif mode == "orderbook":
+        orderbook_mode()
 
 
 def sides(df: dd) -> (int, int):
