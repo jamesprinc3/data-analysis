@@ -13,16 +13,33 @@ from data_loader import DataLoader
 from orderbook import OrderBook
 
 
-def combined_mode(start_time: datetime.datetime):
-    combined_analysis = CombinedAnalysis(sim_root, real_root, start_time,
-                                         sampling_window, simulation_window,
-                                         orderbook_window, product, params_path)
+def combined_mode(st: datetime.datetime):
+    combined_analysis = CombinedAnalysis(sim_root, real_root, graphs_root,
+                                         st, sampling_window, simulation_window,
+                                         orderbook_window, product, params_path,
+                                         save_graphs, show_graphs)
 
     if run_simulation:
         combined_analysis.run_simulation()
-    if graphs:
-        combined_analysis.print_stat_comparison()
-        combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
+    # if graphs:
+    #     combined_analysis.print_stat_comparison()
+    #     combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
+
+
+def multi_combined_mode(start_time: datetime.datetime):
+    num_predictions = int(config['data']['num_predictions'])
+    interval = int(config['data']['interval'])
+
+    for i in range(0, num_predictions):
+        st = start_time + datetime.timedelta(seconds=interval * i)
+        try:
+            combined_mode(st)
+        except:
+            print("we haz error")
+
+
+
+
 
 
 def real_mode(start_time: datetime.datetime):
@@ -65,6 +82,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyse level III order book data')
     parser.add_argument('--config', metavar='path', type=str, nargs='?',
                         help='path to config file')
+    parser.add_argument('--start_time', metavar='HH-MM-DDTHH:MM:SS', type=str, nargs='?',
+                        help='start time for simulation (overrides parameter in .ini file)')
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
@@ -72,6 +91,7 @@ if __name__ == "__main__":
 
     real_root = config['paths']['real_root']
     sim_root = config['paths']['sim_root']
+    graphs_root = config['paths']['graphs_root']
     params_path = config['paths']['params_path']
 
     sampling_window = int(config['window']['sampling'])
@@ -79,13 +99,22 @@ if __name__ == "__main__":
     orderbook_window = int(config['window']['orderbook'])
 
     start_time = config['data']['start_time']
-    start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+
     product = config['data']['product']
 
     mode = config['behaviour']['mode']
-    graphs = config['behaviour'].getboolean('graphs')
+    show_graphs = config['behaviour'].getboolean('show_graphs')
+    save_graphs = config['behaviour'].getboolean('save_graphs')
     run_simulation = config['behaviour'].getboolean('run_simulation')
     fit_distributions = config['behaviour'].getboolean('fit_distributions')
+
+    if args.start_time:
+        logger.info("Using command line start_time")
+        start_time = args.start_time
+
+    start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+
+    graphs = save_graphs or show_graphs
 
     print(graphs)
     print(run_simulation)
@@ -95,6 +124,8 @@ if __name__ == "__main__":
 
     if mode == "combined":
         combined_mode(start_time)
+    elif mode == "multi-combined":
+        multi_combined_mode(start_time)
     elif mode == "real":
         real_mode(start_time)
     elif mode == "simulation":

@@ -18,8 +18,9 @@ from stats import Statistics
 
 
 class CombinedAnalysis:
-    def __init__(self, sim_root: str, real_root: str, start_time: datetime.datetime, sampling_window: int,
-                 simulation_window: int, orderbook_window: int, product: str, params_path: str):
+    def __init__(self, sim_root: str, real_root: str, graphs_root: str, start_time: datetime.datetime,
+                 sampling_window: int, simulation_window: int, orderbook_window: int, product: str,
+                 params_path: str, save_graphs: bool, show_graphs: bool):
         """
         Class which produces validation between the simulated data and the real data
         :param sim_root: root path of the simulated data
@@ -33,6 +34,7 @@ class CombinedAnalysis:
 
         self.real_root = real_root
         self.sim_root = sim_root
+        self.graphs_root = graphs_root
 
         self.start_time = start_time
         self.sampling_window = sampling_window
@@ -41,6 +43,9 @@ class CombinedAnalysis:
 
         self.product = product
         self.params_path = params_path
+
+        self.save_graphs = save_graphs
+        self.show_graphs = show_graphs
 
         self.sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
         self.sampling_window_end_time = self.start_time
@@ -99,9 +104,11 @@ class CombinedAnalysis:
         jar_path = '/Users/jamesprince/project-data/orderbooksimulator_jar/orderbooksimulator.jar'
         bash_command = "java -jar " + jar_path + " " + config_path
 
+        self.logger.info("Running simulations")
+
         process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
-        self.logger.info("Running simulations")
+
         print(str(output))
 
         process.wait()
@@ -134,7 +141,18 @@ class CombinedAnalysis:
         self.__plot_mean_and_ci_and_real_values(mean0, ub0, lb0, times, real_times, real_prices, color_mean='k',
                                                 color_shading='k')
 
-        plt.show()
+        if self.save_graphs:
+            plot_path = self.graphs_root + self.start_time.isoformat() \
+                        + "-sample-" + str(self.sampling_window) \
+                        + "-sim-" + str(self.simulation_window) \
+                        + ".png"
+            plt.savefig(plot_path, dpi=600, transparent=True)
+            self.logger.info("Saved plot to: " + plot_path)
+
+        if self.show_graphs:
+            plt.show()
+
+
 
     def print_stat_comparison(self):
         real_orders, _, _ = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
@@ -156,15 +174,21 @@ class CombinedAnalysis:
                                            color_shading=None):
         # plot the shaded range of the confidence intervals
         plt.figure(figsize=(12, 8))
-        # plt.ylim(8000, 9000)
-        plt.title("BTC-USD Price prediction")
+        ywindow = 800
+        print(real_prices)
+        ymin = real_prices.iloc[0] - (ywindow/2)
+        ymax = real_prices.iloc[0] - (ywindow/2)
+        plt.ylim(ymin, ymax)
+        plt.title(self.product + " at " + self.start_time.isoformat()
+                  + " sampling_window=" + str(self.sampling_window)
+                  + " simulation_window=" + str(self.simulation_window))
         plt.xlabel("Time (seconds)")
         plt.ylabel("Price ($)")
         plt.fill_between(times, ub, lb,
-                         color=color_shading, alpha=.5)
+                         color=color_shading, alpha=.5, label="Simulated 95% Confidence Interval")
         # plot the mean on top
-        plt.plot(times, mean, color_mean, label="Simulated")
-        plt.plot(real_times, real_prices, 'r+', label="Real")
+        plt.plot(times, mean, color_mean, label="Simulated Mean")
+        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         plt.legend()
 
     def __fetch_real_data(self):

@@ -14,9 +14,13 @@ from stats import Statistics
 
 class RealAnalysis:
     def __init__(self, orders_df: dd, trades_df: dd, cancels_df: dd, data_description: str):
+        if orders_df.empty or trades_df.empty or cancels_df.empty:
+            raise AssertionError("At least one DataFrame is empty")
+
         self.orders_df = orders_df
         self.trades_df = trades_df
         self.cancels_df = cancels_df
+
         self.data_description = data_description
 
     @staticmethod
