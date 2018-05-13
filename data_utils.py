@@ -17,6 +17,7 @@ class DataUtils:
     def get_times_in_seconds_after_start(self, series: pd.Series):
         # logger.debug(series)
         # series = pd.to_datetime(series, unit='ns')
+        print(series)
         start_time = series.iloc[0]
         # logger.debug(series)
         series = series.apply(lambda x: (x - start_time))
@@ -54,8 +55,8 @@ class DataUtils:
 
     @staticmethod
     def fuzzy_join(orders: dd, price_over_time: dd) -> dd:
-        orders['price'] = orders['price'].astype('float64')
-        orders['time'] = orders['time'].astype('datetime64[ns]')
+        orders.loc['price'] = orders['price'].apply(pd.to_numeric)
+        orders.loc['time'] = orders['time'].apply(pd.to_datetime)
 
         price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
 

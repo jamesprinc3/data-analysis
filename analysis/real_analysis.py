@@ -105,38 +105,3 @@ class RealAnalysis:
 
     def get_prices_at_times(self, seconds_list: List[int]):
         map(lambda x: DataUtils.get_last_price_before(self.trades_df, x), seconds_list)
-
-        # num_total = total(df)
-        # num_btc_usd = total(btc_usd_df)
-        # logger.debug("percentage of orders of this market vs whole feed: " + str((100*num_btc_usd) / num_total) + "%")
-        #
-
-
-
-        # logger.debug(df['product_id'].unique())
-        # logger.debug(df)
-
-
-        # logger.debug(btc_usd_df)
-
-        # trades = stats.get_trades(btc_usd_df)[['order_id', 'price']].dropna()
-        # order_sizes = stats.get_orders(btc_usd_df)[['order_id', 'size']]
-        # joined = trades.join(order_sizes.set_index('order_id'), how='inner', on='order_id')
-        # logger.debug(trades)
-        # logger.debug(order_sizes)
-        # graphs.graph_price_quantity(joined)
-        # plt.show()
-        # stats.calculate_stats(btc_usd_df)
-        #
-        # graph_sides(btc_usd_df, "BTC-USD")
-
-
-        # btc_usd_price_buy = keep_n_std_dev(btc_usd_price_buy, std_devs)
-        # logger.debug("here")
-        #
-        # theoretical, _ = fitting.best_fit_with_graphs(data, 200)
-        #
-        # logger.debug(theoretical)
-        #
-        # qqplot.plot(btc_usd_price_buy, theoretical)
-        #

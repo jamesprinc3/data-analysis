@@ -40,9 +40,9 @@ class DistributionFitter:
         #     st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
         # ]
 
-        DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2, st.f, st.gamma, st.gumbel_r,
-                         st.gumbel_l, st.expon, st.laplace, st.pareto, st.poisson,
-                         st.lognorm, st.norm, st.vonmises]  # , st.weibull_min, st.weibull_max] #st.loggamma,
+        DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2,
+                         st.gamma,  st.expon, st.laplace, st.pareto, st.poisson,
+                         st.lognorm, st.norm, st.vonmises]  # st.f, st.gumbel_r, st.gumbel_l,, st.weibull_min, st.weibull_max] #st.loggamma,
 
         # DISTRIBUTIONS = [st.expon]
 

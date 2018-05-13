@@ -26,7 +26,8 @@ class CombinedAnalysis:
         self.real_root = config['paths']['real_root']
         self.sim_root = config['paths']['sim_root']
         self.graphs_root = config['paths']['graphs_root']
-        self.params_path = config['paths']['params_path']
+        self.params_root = config['paths']['params_root']
+        self.temp_params_path = config['paths']['params_path']
 
         self.sampling_window = int(config['window']['sampling'])
         self.simulation_window = int(config['window']['simulation'])
@@ -59,9 +60,17 @@ class CombinedAnalysis:
         orders_df, trades_df, cancels_df = self.all_sampling_data
         real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
         params = real_analysis.generate_order_params()
-        real_analysis.params_to_file(params, self.params_path)
 
-        self.logger.info("Parameters saved to: " + self.params_path)
+        # Save temporary params (that the simulator will use)
+        real_analysis.params_to_file(params, self.temp_params_path)
+        self.logger.info("Parameters saved to: " + self.temp_params_path)
+
+        # Save permanent params (that can be reused!)
+        perma_params_path = self.params_root + self.sim_st.date().isoformat() + "/"
+        pathlib.Path(perma_params_path).mkdir(parents=True, exist_ok=True)
+        perma_params_path = perma_params_path + self.sim_st.time().isoformat() + ".json"
+        real_analysis.params_to_file(params, perma_params_path)
+        self.logger.info("Parameters saved to: " + self.temp_params_path)
 
         # Get orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
@@ -129,7 +138,6 @@ class CombinedAnalysis:
         self.logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
-        print("real prices: " + str(real_prices))
 
         start_price = real_prices.iloc[0]
 
@@ -182,11 +190,10 @@ class CombinedAnalysis:
     # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
     def __plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
                                            color_shading=None):
-        # plot the shaded range of the confidence intervals
+        # Set bounds and make title (+ for axes)
         plt.figure(figsize=(12, 8))
-        print(real_prices)
-        ymin = real_prices.iloc[0] - (self.ywindow/2)
-        ymax = real_prices.iloc[0] + (self.ywindow/2)
+        ymin = real_prices.iloc[0] - (self.ywindow / 2)
+        ymax = real_prices.iloc[0] + (self.ywindow / 2)
         plt.ylim(ymin, ymax)
         plt.title(self.product + " at " + self.sim_st.isoformat()
                   + " sampling_window=" + str(self.sampling_window)
@@ -194,11 +201,16 @@ class CombinedAnalysis:
                   + " num_simulators=" + str(self.num_simulators))
         plt.xlabel("Time (seconds)")
         plt.ylabel("Price ($)")
-        plt.fill_between(times, ub, lb,
-                         color=color_shading, alpha=.5, label="Simulated 95% Confidence Interval")
+
+        # plot the shaded range of the confidence intervals
+        plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
+                         label="Simulated 95% Confidence Interval")
+
         # plot the mean on top
-        plt.plot(times, mean, color_mean, label="Simulated Mean")
-        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
+        plt.plot(times, mean, color_mean,
+                 label="Simulated Mean")
+        plt.plot(real_times, real_prices, 'r+',
+                 label="Real Trades")
         plt.legend()
 
     def __fetch_real_data(self):
