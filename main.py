@@ -15,9 +15,18 @@ from data_splitter import DataSplitter
 from orderbook import OrderBook
 
 
-def get_all_data(st: datetime, et: datetime):
+def get_all_data(st: datetime, config):
+
+    real_root = config['paths']['real_root']
+    product = config['data']['product']
+
+    ob_w = int(config['window']['orderbook'])
+    sam_w = int(config['window']['sampling'])
+    sim_w = int(config['window']['simulation'])
+
+
     # Get all data which we will use to reconstruct the order bool
-    all_ob_start_time = st - datetime.timedelta(seconds=ow)
+    all_ob_start_time = st - datetime.timedelta(seconds=ob_w)
     all_ob_end_time = st
     all_ob_data = DataLoader().load_sampling_data(real_root, all_ob_start_time, all_ob_end_time, product)
 
@@ -36,11 +45,14 @@ def get_all_data(st: datetime, et: datetime):
     return all_ob_data, all_sampling_data, all_future_data
 
 
-def combined_mode(st: datetime.datetime):
-    all_ob_data, all_sampling_data, all_future_data = get_all_data(st, orderbook_window, sampling_window,
-                                                                   simulation_window)
+def combined_mode(st: datetime.datetime = None):
+    if not st:
+        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
+    run_simulation = config['behaviour'].getboolean('run_simulation')
 
-    combined_analysis = CombinedAnalysis(config, all_ob_data, all_sampling_data, all_future_data)
+    all_ob_data, all_sampling_data, all_future_data = get_all_data(st, config)
+
+    combined_analysis = CombinedAnalysis(config, st, all_ob_data, all_sampling_data, all_future_data)
 
     if run_simulation:
         combined_analysis.run_simulation()
@@ -57,23 +69,33 @@ def take_secs(dt: datetime, secs: int):
     return dt - datetime.timedelta(seconds=secs)
 
 
-def multi_combined_mode(st: datetime.datetime):
+def multi_combined_mode(st: datetime.datetime = None):
+    if not st:
+        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
+
+    real_root = config['paths']['real_root']
+    product = config['data']['product']
+
+    ob_w = int(config['window']['orderbook'])
+    sam_w = int(config['window']['sampling'])
+    sim_w = int(config['window']['simulation'])
+
     num_predictions = int(config['data']['num_predictions'])
     interval = int(config['data']['interval'])
 
-    all_data_st = take_secs(st, orderbook_window)
+    all_data_st = take_secs(st, ob_w)
     all_data_et = add_secs(st, (num_predictions - 1) * interval)
 
     all_data = DataLoader.load_sampling_data(real_root, all_data_st, all_data_et, product)
 
     for i in range(0, num_predictions):
         sim_st = add_secs(st, interval * i)
-        sim_et = add_secs(sim_st, simulation_window)
+        sim_et = add_secs(sim_st, sim_w)
 
-        ob_st = take_secs(sim_st, orderbook_window)
+        ob_st = take_secs(sim_st, ob_w)
         ob_et = sim_st
 
-        sam_st = take_secs(sim_st, sampling_window)
+        sam_st = take_secs(sim_st, sam_w)
         sam_et = sim_st
 
         all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
@@ -90,9 +112,19 @@ def multi_combined_mode(st: datetime.datetime):
         combined_analysis.run_simulation()
 
 
-def real_mode(start_time: datetime.datetime):
-    sampling_window_start_time = start_time - datetime.timedelta(seconds=sampling_window)
-    sampling_window_end_time = start_time
+def real_mode(st: datetime.datetime = None):
+    if not st:
+        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
+
+    real_root = config['paths']['real_root']
+    params_path = config['paths']['params_path']
+    product = config['data']['product']
+    sampling_window = int(config['window']['sampling'])
+    fit_distributions = config['behaviour']['fit_distributions']
+    graphs_root = config['paths']['graphs_root']
+
+    sampling_window_start_time = st - datetime.timedelta(seconds=sampling_window)
+    sampling_window_end_time = st
     orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, sampling_window_start_time,
                                                                      sampling_window_end_time, product)
     real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + product)
@@ -100,8 +132,8 @@ def real_mode(start_time: datetime.datetime):
     if fit_distributions and params_path:
         params = real_analysis.generate_order_params()
         real_analysis.params_to_file(params, params_path)
-    if graphs:
-        real_analysis.generate_graphs()
+    if graphs_root:
+        real_analysis.generate_graphs(graphs_root)
 
 
 def simulation_mode():
@@ -141,11 +173,11 @@ if __name__ == "__main__":
     mode = config['behaviour']['mode']
 
     if mode == "combined":
-        combined_mode(start_time)
+        combined_mode()
     elif mode == "multi-combined":
-        multi_combined_mode(start_time)
+        multi_combined_mode()
     elif mode == "real":
-        real_mode(start_time)
+        real_mode()
     elif mode == "simulation":
         simulation_mode()
     elif mode == "orderbook":

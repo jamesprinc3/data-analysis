@@ -70,9 +70,6 @@ class GraphCreator:
         buy_prices = buy_prices.apply(lambda x: -x)
         sell_prices = DataTransformer.get_relative_prices(trades_df, sell_orders)
 
-        print(buy_prices)
-        print(sell_prices)
-
         # Graphing
         plt.figure(figsize=(12, 8))
 

@@ -35,15 +35,21 @@ class RealAnalysis:
     def generate_order_params(self):
         params = {}
         distributions = {}
-        relative_order_price_distributions = DataTransformer.relative_price_distributions(self.trades_df, self.orders_df)
+        relative_order_price_distributions = DataTransformer.price_distributions(self.trades_df, self.orders_df,
+                                                                                 relative=True)
+
+        # Buy/sell Price relative
+        distributions["buy_price_relative"] = relative_order_price_distributions["buy"][1]
+        distributions["sell_price_relative"] = relative_order_price_distributions["sell"][1]
 
         # Buy/sell Price
-        distributions["buy_price"] = relative_order_price_distributions["buy"][1]
-        distributions["sell_price"] = relative_order_price_distributions["sell"][1]
+        order_price_distributions = DataTransformer.price_distributions(self.trades_df, self.orders_df, relative=False)
+        distributions["buy_price"] = order_price_distributions["buy"][1]
+        distributions["sell_price"] = order_price_distributions["sell"][1]
 
         # Buy/sell price Cancellation
-        relative_cancel_price_distributions = DataTransformer.relative_price_distributions(self.trades_df,
-                                                                                           self.cancels_df)
+        relative_cancel_price_distributions = DataTransformer.price_distributions(self.trades_df,
+                                                                                  self.cancels_df)
         distributions["buy_cancel_price"] = relative_cancel_price_distributions["buy"][1]
         distributions["sell_cancel_price"] = relative_cancel_price_distributions["sell"][1]
 
@@ -54,9 +60,10 @@ class RealAnalysis:
                                                                                     limit_size_best_fit_params)
 
         market_orders = DataSplitter.get_market_orders(self.orders_df)
-        market_size_best_fit, market_size_best_fit_params = DistributionFitter.best_fit_distribution(market_orders['size'])
+        market_size_best_fit, market_size_best_fit_params = DistributionFitter.best_fit_distribution(
+            market_orders['size'])
         _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
-                                                                                    market_size_best_fit_params)
+                                                                                     market_size_best_fit_params)
 
         # Interval
         _, distributions["interval"] = DataTransformer.intervals_distribution(self.orders_df)
@@ -76,7 +83,7 @@ class RealAnalysis:
 
         return params
 
-    def generate_graphs(self):
+    def generate_graphs(self, graph_root: str = None):
         # btc_usd_price_buy = pd.Series(Statistics.get_side('buy', input_dd)['price'].astype('float64').tolist())
         #
         # sample_size = 100

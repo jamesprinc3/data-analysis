@@ -15,23 +15,25 @@ class DataTransformer:
 
     # Perhaps this ought to be moved somewhere
     @staticmethod
-    def relative_price_distributions(trades_df: dd, other_df: dd, bins=100):
-        # Buy Side
-        buy_df = DataSplitter.get_side("buy", other_df)
-        relative_buy_prices = DataTransformer.get_relative_prices(trades_df, buy_df)
-        # Flip distribution for better fit
-        relative_buy_prices = relative_buy_prices.apply(lambda x: -x)
-        print(relative_buy_prices)
-        buy_best_fit, buy_best_fit_params = DistributionFitter.best_fit_distribution(relative_buy_prices, bins)
-        buy_best_dist, buy_dist_str = DistributionFitter.get_distribution_string(buy_best_fit, buy_best_fit_params)
+    def price_distributions(trades_df: dd, other_df: dd, bins=100, relative=True):
+        ret = {}
 
-        # Sell Side
-        sell_df = DataSplitter.get_side("sell", other_df)
-        relative_sell_prices = DataTransformer.get_relative_prices(trades_df, sell_df)
-        sell_best_fit, sell_best_fit_params = DistributionFitter.best_fit_distribution(relative_sell_prices, bins)
-        sell_best_dist, sell_dist_str = DistributionFitter.get_distribution_string(sell_best_fit, sell_best_fit_params)
+        for side in ["buy", "sell"]:
+            side_df = DataSplitter.get_side(side, other_df)
+            prices = side_df['price']
 
-        return {"buy": (buy_best_dist, buy_dist_str), "sell": (sell_best_dist, sell_dist_str)}
+            if relative:
+                prices = DataTransformer.get_relative_prices(trades_df, side_df)
+                # Flip distribution for better fit
+                if side == "buy":
+                    prices = prices.apply(lambda x: -x)
+
+            best_fit, best_fit_params = DistributionFitter.best_fit_distribution(prices, bins)
+            best_dist, dist_str = DistributionFitter.get_distribution_string(best_fit, best_fit_params)
+
+            ret[side] = (best_dist, dist_str)
+
+        return ret
 
     @staticmethod
     def get_relative_prices(trades_df: dd, other_df: dd) -> dd:

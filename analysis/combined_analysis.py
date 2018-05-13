@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
 
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
@@ -17,46 +18,10 @@ from stats import Statistics
 
 
 class CombinedAnalysis:
-    # def __init__(self, sim_root: str, real_root: str, graphs_root: str, start_time: datetime.datetime,
-    #              sampling_window: int, simulation_window: int, orderbook_window: int, product: str,
-    #              params_path: str, save_graphs: bool, show_graphs: bool, sim_timeout: int, num_simulators: int):
-    #     """
-    #     Class which produces validation between the simulated data and the real data
-    #     :param sim_root: root path of the simulated data
-    #     :param real_root: root path of the real data
-    #     :param start_time: datetime which
-    #     :param sampling_window: number of seconds before start_time to sample from
-    #     :param simulation_window: number of seconds after start_time to simulate
-    #     :param orderbook_window: number of seconds before start_time to analyse to get state of the orderbook
-    #     """
-    #     self.logger = logging.getLogger()
-    #
-    #     self.real_root = real_root
-    #     self.sim_root = sim_root
-    #     self.graphs_root = graphs_root
-    #
-    #     self.start_time = start_time
-    #     self.sampling_window = sampling_window
-    #     self.simulation_window = simulation_window
-    #     self.orderbook_window = orderbook_window
-    #
-    #     self.product = product
-    #     self.params_path = params_path
-    #
-    #     self.save_graphs = save_graphs
-    #     self.show_graphs = show_graphs
-    #
-    #     self.sim_timeout = sim_timeout
-    #     self.num_simulators = num_simulators
-    #
-    #     self.sampling_window_start_time = self.start_time - timedelta(seconds=self.sampling_window)
-    #     self.sampling_window_end_time = self.start_time
-    #
-    #     self.orderbook_window_start_time = start_time - datetime.timedelta(seconds=self.orderbook_window)
-    #     self.orderbook_window_end_time = start_time
-
     def __init__(self, config, sim_st: datetime, all_ob_data, all_sampling_data, all_future_data):
         self.logger = logging.getLogger()
+
+        self.config = config
 
         self.real_root = config['paths']['real_root']
         self.sim_root = config['paths']['sim_root']
@@ -76,6 +41,8 @@ class CombinedAnalysis:
         self.fit_distributions = config['behaviour'].getboolean('fit_distributions')
         self.sim_timeout = int(config['behaviour']['sim_timeout'])
         self.num_simulators = int(config['behaviour']['num_simulators'])
+
+        self.ywindow = int(config['graphs']['ywindow'])
 
         self.sampling_window_start_time = sim_st - timedelta(seconds=self.sampling_window)
         self.sampling_window_end_time = sim_st
@@ -107,7 +74,7 @@ class CombinedAnalysis:
 
         # Generate .conf file
         # TODO: generate this in a function further up the chain
-        config = {'paths': {
+        sim_config = {'paths': {
             'simRoot': "/Users/jamesprince/project-data/sims/",
             'params': "/Users/jamesprince/project-data/parameters.json",
             'orderbook': orderbook_path
@@ -122,18 +89,18 @@ class CombinedAnalysis:
             'orderbook': {
                 'stp': False
             }}
-        config_string = SimConfig.generate_config_string(config)
-        config_path = "/Users/jamesprince/project-data/analysis.conf"
-        f = open(config_path, 'w')
-        f.write(config_string)
+        sim_config_string = SimConfig.generate_config_string(sim_config)
+        sim_config_path = "/Users/jamesprince/project-data/analysis.conf"
+        f = open(sim_config_path, 'w')
+        f.write(sim_config_string)
         f.close()
 
-        self.logger.info("Wrote sim config to: " + config_path)
+        self.logger.info("Wrote sim config to: " + sim_config_path)
 
         # Start simulation
         # TODO: remove hard path
         jar_path = '/Users/jamesprince/project-data/orderbooksimulator_jar/orderbooksimulator.jar'
-        bash_command = "java -jar " + jar_path + " " + config_path
+        bash_command = "java -jar " + jar_path + " " + sim_config_path
 
         self.logger.info("Running simulations")
 
@@ -146,7 +113,7 @@ class CombinedAnalysis:
             self.logger.info("Simulations complete")
 
             # Validate
-            sim_analysis = SimulationAnalysis(self.sim_root, "Combined Analysis")
+            sim_analysis = SimulationAnalysis(self.config)
             self.graph_real_prices_with_simulated_confidence_intervals(sim_analysis)
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout limit for sim was reached, JVM killed.")
@@ -178,7 +145,12 @@ class CombinedAnalysis:
                                                 color_shading='k')
 
         if self.save_graphs:
-            plot_path = self.graphs_root + self.sim_st.date().isoformat() \
+            plot_root = self.graphs_root + self.sim_st.date().isoformat()
+            # Ensure directory exists
+            pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
+
+            # Save plot
+            plot_path = plot_root \
                         + "/" + self.sim_st.time().isoformat() \
                         + "-sample-" + str(self.sampling_window) \
                         + "-sim_window-" + str(self.simulation_window) \
@@ -212,10 +184,9 @@ class CombinedAnalysis:
                                            color_shading=None):
         # plot the shaded range of the confidence intervals
         plt.figure(figsize=(12, 8))
-        ywindow = 800
         print(real_prices)
-        ymin = real_prices.iloc[0] - (ywindow/2)
-        ymax = real_prices.iloc[0] + (ywindow/2)
+        ymin = real_prices.iloc[0] - (self.ywindow/2)
+        ymax = real_prices.iloc[0] + (self.ywindow/2)
         plt.ylim(ymin, ymax)
         plt.title(self.product + " at " + self.sim_st.isoformat()
                   + " sampling_window=" + str(self.sampling_window)
