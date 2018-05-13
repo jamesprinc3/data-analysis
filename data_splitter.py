@@ -1,3 +1,5 @@
+import datetime
+
 import dask.dataframe as dd
 
 from data_utils import DataUtils
@@ -22,6 +24,11 @@ class DataSplitter:
         converted = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
 
         return df[start_time > converted]
+
+    @staticmethod
+    def get_between(df: dd, start: datetime, end: datetime):
+        temp = df[df['time'] > start]
+        return temp[temp['time'] < end]
 
     @staticmethod
     def get_side(side: str, df: dd) -> dd:

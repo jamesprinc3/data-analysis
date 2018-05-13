@@ -56,7 +56,7 @@ class DataLoader:
         files_to_load = []
 
         for i in range(0, hour_delta + 1):
-            filename = start_time.date().isoformat() + "/" + str(start_time.hour + i) + ".parquet"
+            filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"
             self.logger.debug(filename)
             files_to_load.append(filename)
 

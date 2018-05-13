@@ -2,6 +2,7 @@ import argparse
 import configparser
 import datetime
 import logging
+import time
 
 import dask.dataframe as dd
 
@@ -10,36 +11,83 @@ from analysis.combined_analysis import CombinedAnalysis
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
 from data_loader import DataLoader
+from data_splitter import DataSplitter
 from orderbook import OrderBook
 
 
+def get_all_data(st: datetime, et: datetime):
+    # Get all data which we will use to reconstruct the order bool
+    all_ob_start_time = st - datetime.timedelta(seconds=ow)
+    all_ob_end_time = st
+    all_ob_data = DataLoader().load_sampling_data(real_root, all_ob_start_time, all_ob_end_time, product)
+
+    # Assume orderbook_window > sampling_window, and therefore filter already loaded ob data
+    all_sample_start_time = st - datetime.timedelta(seconds=sam_w)
+    all_sample_end_time = st
+    all_sampling_data = map(lambda x: DataSplitter.get_between(x, all_sample_start_time, all_sample_end_time),
+                            all_ob_data)
+
+    # Get future data
+    all_future_data_start_time = st
+    all_future_data_end_time = st + datetime.timedelta(seconds=sim_w)
+    all_future_data = DataLoader().load_sampling_data(real_root, all_future_data_start_time, all_future_data_end_time,
+                                                      product)
+
+    return all_ob_data, all_sampling_data, all_future_data
+
+
 def combined_mode(st: datetime.datetime):
-    combined_analysis = CombinedAnalysis(sim_root, real_root, graphs_root,
-                                         st, sampling_window, simulation_window,
-                                         orderbook_window, product, params_path,
-                                         save_graphs, show_graphs)
+    all_ob_data, all_sampling_data, all_future_data = get_all_data(st, orderbook_window, sampling_window,
+                                                                   simulation_window)
+
+    combined_analysis = CombinedAnalysis(config, all_ob_data, all_sampling_data, all_future_data)
 
     if run_simulation:
         combined_analysis.run_simulation()
-    # if graphs:
-    #     combined_analysis.print_stat_comparison()
-    #     combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
+        # if graphs:
+        #     combined_analysis.print_stat_comparison()
+        #     combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
 
 
-def multi_combined_mode(start_time: datetime.datetime):
+def add_secs(dt: datetime, secs: int):
+    return dt + datetime.timedelta(seconds=secs)
+
+
+def take_secs(dt: datetime, secs: int):
+    return dt - datetime.timedelta(seconds=secs)
+
+
+def multi_combined_mode(st: datetime.datetime):
     num_predictions = int(config['data']['num_predictions'])
     interval = int(config['data']['interval'])
 
+    all_data_st = take_secs(st, orderbook_window)
+    all_data_et = add_secs(st, (num_predictions - 1) * interval)
+
+    all_data = DataLoader.load_sampling_data(real_root, all_data_st, all_data_et, product)
+
     for i in range(0, num_predictions):
-        st = start_time + datetime.timedelta(seconds=interval * i)
-        try:
-            combined_mode(st)
-        except:
-            print("we haz error")
+        sim_st = add_secs(st, interval * i)
+        sim_et = add_secs(sim_st, simulation_window)
 
+        ob_st = take_secs(sim_st, orderbook_window)
+        ob_et = sim_st
 
+        sam_st = take_secs(sim_st, sampling_window)
+        sam_et = sim_st
 
+        all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
+                          all_data)
 
+        all_sampling_data = map(lambda x: DataSplitter.get_between(x, sam_st, sam_et),
+                                all_data)
+
+        all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
+                              all_data)
+
+        combined_analysis = CombinedAnalysis(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+
+        combined_analysis.run_simulation()
 
 
 def real_mode(start_time: datetime.datetime):
@@ -57,8 +105,7 @@ def real_mode(start_time: datetime.datetime):
 
 
 def simulation_mode():
-    print(sim_root)
-    SimulationAnalysis(sim_root, product).analyse()
+    SimulationAnalysis(config).analyse()
 
 
 def orderbook_mode():
@@ -76,6 +123,8 @@ def orderbook_mode():
 
 
 if __name__ == "__main__":
+    t0 = time.time()
+
     fileConfig('config/logging_config.ini')
     logger = logging.getLogger()
 
@@ -89,38 +138,7 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read(args.config)
 
-    real_root = config['paths']['real_root']
-    sim_root = config['paths']['sim_root']
-    graphs_root = config['paths']['graphs_root']
-    params_path = config['paths']['params_path']
-
-    sampling_window = int(config['window']['sampling'])
-    simulation_window = int(config['window']['simulation'])
-    orderbook_window = int(config['window']['orderbook'])
-
-    start_time = config['data']['start_time']
-
-    product = config['data']['product']
-
     mode = config['behaviour']['mode']
-    show_graphs = config['behaviour'].getboolean('show_graphs')
-    save_graphs = config['behaviour'].getboolean('save_graphs')
-    run_simulation = config['behaviour'].getboolean('run_simulation')
-    fit_distributions = config['behaviour'].getboolean('fit_distributions')
-
-    if args.start_time:
-        logger.info("Using command line start_time")
-        start_time = args.start_time
-
-    start_time = datetime.datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-
-    graphs = save_graphs or show_graphs
-
-    print(graphs)
-    print(run_simulation)
-    print(fit_distributions)
-
-    print(mode)
 
     if mode == "combined":
         combined_mode(start_time)
@@ -132,6 +150,8 @@ if __name__ == "__main__":
         simulation_mode()
     elif mode == "orderbook":
         orderbook_mode()
+
+    logger.info("Program took " + str(time.time() - t0) + " seconds")
 
 
 def sides(df: dd) -> (int, int):

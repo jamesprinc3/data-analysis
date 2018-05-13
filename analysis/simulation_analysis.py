@@ -12,14 +12,13 @@ from stats import Statistics
 
 
 class SimulationAnalysis:
-    def __init__(self, root, data_desc):
+    def __init__(self, config):
         """
-        :param root: The data root for the output from OrderBookSimulator
-        :param data_desc: A description of what data is being analysed (to be eventually outputted on graphs)
+        :param config: initial application config
         """
         self.logger = logging.getLogger()
-        self.root = root
-        self.graph_creator = GraphCreator("Simulation " + data_desc)
+        self.root = config['paths']['sim_root']
+        self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
 
         self.all_sims = DataLoader().load_sim_data(self.root, 0, 100)
 
@@ -65,7 +64,6 @@ class SimulationAnalysis:
             trades_df = trades_dd.compute()
             for seconds in seconds_list:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
-                print(price)
                 time_prices_dict[seconds].append(price)
             sim_index += 1
         return time_prices_dict

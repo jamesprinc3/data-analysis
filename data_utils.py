@@ -1,4 +1,5 @@
 import dask.dataframe as dd
+import math
 import pandas as pd
 
 
@@ -16,6 +17,7 @@ class DataUtils:
     def get_times_in_seconds_after_start(self, series: pd.Series):
         # logger.debug(series)
         # series = pd.to_datetime(series, unit='ns')
+        print(series)
         start_time = series.iloc[0]
         # logger.debug(series)
         series = series.apply(lambda x: (x - start_time))
@@ -25,15 +27,23 @@ class DataUtils:
 
         return series
 
+    @staticmethod
+    def get_first_non_nan(s: pd.Series):
+        return s.dropna().iloc[0]
+
 
     @staticmethod
     def get_last_price_before(trades_df: dd, seconds: int):
+
+        if trades_df.empty:
+            return math.nan
+
         local_df = trades_df.copy()
         local_df['time'] = DataUtils().get_times_in_seconds_after_start(local_df['time'])
         # logger.debug(local_df['time'])
-        print(seconds)
         trades_before = local_df[local_df['time'] < seconds]
         return trades_before['price'].iloc[-1]
+
 
     def remove_tails(self, data: dd, std_devs: int, sample_size: int=10000):
         data = DataUtils().keep_n_std_dev(data, std_devs)
