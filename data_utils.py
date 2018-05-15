@@ -17,7 +17,6 @@ class DataUtils:
     def get_times_in_seconds_after_start(self, series: pd.Series):
         # logger.debug(series)
         # series = pd.to_datetime(series, unit='ns')
-        print(series)
         start_time = series.iloc[0]
         # logger.debug(series)
         series = series.apply(lambda x: (x - start_time))

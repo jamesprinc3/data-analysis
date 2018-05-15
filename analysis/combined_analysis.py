@@ -134,7 +134,7 @@ class CombinedAnalysis:
         times = list(range(interval, self.simulation_window, interval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
-        print(confidence_intervals)
+        self.logger.info(confidence_intervals)
         self.logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
@@ -211,15 +211,13 @@ class CombinedAnalysis:
                  label="Simulated Mean")
         plt.plot(real_times, real_prices, 'r+',
                  label="Real Trades")
-        plt.legend()
+        plt.legend(loc='upper right')
 
     def __fetch_real_data(self):
         df = DataLoader().load_real_data(self.real_root, self.sim_st,
                                          self.sim_st + timedelta(seconds=self.simulation_window), self.product)
         # [['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
-
-        print(trades_df)
 
         trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
         trades_df['price'].iloc[0] = DataUtils().get_first_non_nan(trades_df['price'])

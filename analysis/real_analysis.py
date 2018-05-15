@@ -96,9 +96,9 @@ class RealAnalysis:
         # TODO: include the time in the data_descriptions
         graph_creator = GraphCreator("Real BTC-USD")
 
-        # graph_creator.graph_sides(self.orders_df)
-        # graph_creator.graph_relative_price_distribution(self.trades_df, self.orders_df, 100)
-        # graph_creator.graph_interval(self.orders_df)
+        graph_creator.graph_sides(self.orders_df)
+        graph_creator.graph_relative_price_distribution(self.trades_df, self.orders_df, 100)
+        graph_creator.graph_interval(self.orders_df)
         graph_creator.graph_price_time(self.trades_df, "Price over time")
 
         plt.show()

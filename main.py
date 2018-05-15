@@ -172,6 +172,10 @@ if __name__ == "__main__":
 
     mode = config['behaviour']['mode']
 
+    # Ensure all paths exist
+    for path_key in config['paths']:
+        pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True)
+
     if mode == "combined":
         combined_mode()
     elif mode == "multi-combined":
