@@ -2,6 +2,7 @@ import argparse
 import configparser
 import datetime
 import logging
+import pathlib
 import time
 
 import dask.dataframe as dd
@@ -174,7 +175,11 @@ if __name__ == "__main__":
 
     # Ensure all paths exist
     for path_key in config['paths']:
-        pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True)
+        try:
+            pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            pass
+        logger.info(config['paths'][path_key] + " exists")
 
     if mode == "combined":
         combined_mode()

@@ -27,7 +27,11 @@ class CombinedAnalysis:
         self.sim_root = config['paths']['sim_root']
         self.graphs_root = config['paths']['graphs_root']
         self.params_root = config['paths']['params_root']
+        self.orderbook_root = config['paths']['orderbook_root']
+
         self.temp_params_path = config['paths']['params_path']
+        self.sim_config_path = config['paths']['sim_config_path']
+        self.jar_path = config['paths']['jar_path']
 
         self.sampling_window = int(config['window']['sampling'])
         self.simulation_window = int(config['window']['simulation'])
@@ -63,20 +67,20 @@ class CombinedAnalysis:
 
         # Save temporary params (that the simulator will use)
         real_analysis.params_to_file(params, self.temp_params_path)
-        self.logger.info("Parameters saved to: " + self.temp_params_path)
+        self.logger.info("Temporary parameters saved to: " + self.temp_params_path)
 
         # Save permanent params (that can be reused!)
         perma_params_path = self.params_root + self.sim_st.date().isoformat() + "/"
         pathlib.Path(perma_params_path).mkdir(parents=True, exist_ok=True)
         perma_params_path = perma_params_path + self.sim_st.time().isoformat() + ".json"
         real_analysis.params_to_file(params, perma_params_path)
-        self.logger.info("Parameters saved to: " + self.temp_params_path)
+        self.logger.info("Permanent parameters saved to: " + self.temp_params_path)
 
         # Get orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
         orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
         # TODO: remove this magic string
-        orderbook_path = "/Users/jamesprince/project-data/orderbook/" + self.orderbook_window_end_time.isoformat() + ".csv"
+        orderbook_path = self.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(orderbook, orderbook_path)
 
         self.logger.info("Orderbook saved to: " + orderbook_path)
@@ -84,10 +88,10 @@ class CombinedAnalysis:
         # Generate .conf file
         # TODO: generate this in a function further up the chain
         sim_config = {'paths': {
-            'simRoot': "/Users/jamesprince/project-data/sims/",
-            'params': "/Users/jamesprince/project-data/parameters.json",
+            'simRoot': self.sim_root,
+            'params': self.temp_params_path,
             'orderbook': orderbook_path
-            },
+        },
 
             'execution': {
                 'numSimulations': self.num_simulators,
@@ -99,17 +103,16 @@ class CombinedAnalysis:
                 'stp': False
             }}
         sim_config_string = SimConfig.generate_config_string(sim_config)
-        sim_config_path = "/Users/jamesprince/project-data/analysis.conf"
-        f = open(sim_config_path, 'w')
+
+        f = open(self.sim_config_path, 'w')
         f.write(sim_config_string)
         f.close()
 
-        self.logger.info("Wrote sim config to: " + sim_config_path)
+        self.logger.info("Wrote sim config to: " + self.sim_config_path)
 
         # Start simulation
-        # TODO: remove hard path
-        jar_path = '/Users/jamesprince/project-data/orderbooksimulator_jar/orderbooksimulator.jar'
-        bash_command = "java -jar " + jar_path + " " + sim_config_path
+
+        bash_command = "java -jar " + self.jar_path + " " + self.sim_config_path
 
         self.logger.info("Running simulations")
 
@@ -117,7 +120,6 @@ class CombinedAnalysis:
             process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
             output, error = process.communicate(timeout=self.sim_timeout)
 
-            # process.wait(timeout=self.sim_timeout)
             self.logger.info("output: " + str(output) + " error: " + str(error))
             self.logger.info("Simulations complete")
 
@@ -127,15 +129,12 @@ class CombinedAnalysis:
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout limit for sim was reached, JVM killed.")
 
-
-
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_analysis: SimulationAnalysis):
         interval = 10  # seconds
         times = list(range(interval, self.simulation_window, interval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         self.logger.info(confidence_intervals)
-        self.logger.debug(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
 
@@ -169,8 +168,6 @@ class CombinedAnalysis:
 
         if self.show_graphs:
             plt.show()
-
-
 
     def print_stat_comparison(self):
         real_orders, _, _ = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
