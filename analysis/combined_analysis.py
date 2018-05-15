@@ -1,5 +1,7 @@
+import csv
 import datetime
 import logging
+import os
 import subprocess
 from datetime import timedelta
 
@@ -28,6 +30,7 @@ class CombinedAnalysis:
         self.graphs_root = config['paths']['graphs_root']
         self.params_root = config['paths']['params_root']
         self.orderbook_root = config['paths']['orderbook_root']
+        self.correlation_root = config['paths']['correlation_root']
 
         self.temp_params_path = config['paths']['params_path']
         self.sim_config_path = config['paths']['sim_config_path']
@@ -111,7 +114,6 @@ class CombinedAnalysis:
         self.logger.info("Wrote sim config to: " + self.sim_config_path)
 
         # Start simulation
-
         bash_command = "java -jar " + self.jar_path + " " + self.sim_config_path
 
         self.logger.info("Running simulations")
@@ -125,12 +127,34 @@ class CombinedAnalysis:
 
             # Validate
             sim_analysis = SimulationAnalysis(self.config)
-            self.graph_real_prices_with_simulated_confidence_intervals(sim_analysis)
+            validation_data = self.get_validation_data(sim_analysis)
+
+            correlation_file_path = self.correlation_root + "corr.csv"
+            self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
+            self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout limit for sim was reached, JVM killed.")
 
-    def graph_real_prices_with_simulated_confidence_intervals(self, sim_analysis: SimulationAnalysis):
-        interval = 10  # seconds
+    def append_final_prices(self, dst, sim_means, real_prices):
+        last_real_price = real_prices.iloc[-1]
+        last_sim_price = sim_means[-1]
+
+        if not os.path.isfile(dst):
+            with open(dst, 'w', newline='') as csvfile:
+                fieldnames = ['start_time', 'last_real_price', 'last_sim_price']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                writer.writeheader()
+
+        print("meh")
+
+        with open(dst, 'a', newline='') as fd:
+            row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)])
+            fd.write(row)
+
+
+    def get_validation_data(self, sim_analysis: SimulationAnalysis):
+        interval = 10  # TODO: make this configurable
         times = list(range(interval, self.simulation_window, interval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
@@ -141,14 +165,16 @@ class CombinedAnalysis:
         start_price = real_prices.iloc[0]
 
         # Add the initial price and then convert to numpy arrays
-        mean0 = np.array([start_price] + list(map(lambda lu: (lu[0] + lu[1]) / 2, confidence_intervals.values())))
-        ub0 = np.array([start_price] + list(map(lambda x: x[1], confidence_intervals.values())))
-        lb0 = np.array([start_price] + list(map(lambda x: x[0], confidence_intervals.values())))
-
+        sim_means = np.array([start_price] + list(map(lambda lu: (lu[0] + lu[1]) / 2, confidence_intervals.values())))
+        sim_ub = np.array([start_price] + list(map(lambda x: x[1], confidence_intervals.values())))
+        sim_lb = np.array([start_price] + list(map(lambda x: x[0], confidence_intervals.values())))
         times = [0] + times
 
+        return sim_means, sim_ub, sim_lb, times, real_times, real_prices
+
+    def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times, real_prices):
         # plot the data
-        self.__plot_mean_and_ci_and_real_values(mean0, ub0, lb0, times, real_times, real_prices, color_mean='k',
+        self.__plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices, color_mean='k',
                                                 color_shading='k')
 
         if self.save_graphs:

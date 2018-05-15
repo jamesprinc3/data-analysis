@@ -35,6 +35,7 @@ class RealAnalysis:
     def generate_order_params(self):
         params = {}
         distributions = {}
+        ratios = {}
         relative_order_price_distributions = DataTransformer.price_distributions(self.trades_df, self.orders_df,
                                                                                  relative=True)
 
@@ -65,21 +66,15 @@ class RealAnalysis:
         _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
                                                                                      market_size_best_fit_params)
 
-        # Interval
         _, distributions["interval"] = DataTransformer.intervals_distribution(self.orders_df)
 
+        ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
+        ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
+        ratios["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
+        ratios['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(self.orders_df)
+
         params["distributions"] = distributions
-
-        # Buy/sell Order Ratio
-        params["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
-
-        # Buy/sell Order Ratio
-        params["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
-
-        # Buy/sell Volume Ratio
-        params["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
-
-        params['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(self.orders_df)
+        params['ratios'] = ratios
 
         return params
 

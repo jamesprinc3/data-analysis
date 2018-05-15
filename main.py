@@ -176,9 +176,12 @@ if __name__ == "__main__":
     # Ensure all paths exist
     for path_key in config['paths']:
         try:
-            pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True)
+            if pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True):
+                raise FileNotFoundError
         except FileExistsError:
             pass
+        except FileNotFoundError:
+            logger.info(config['paths'][path_key] + " does not exist")
         logger.info(config['paths'][path_key] + " exists")
 
     if mode == "combined":
