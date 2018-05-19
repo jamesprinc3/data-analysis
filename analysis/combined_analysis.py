@@ -27,10 +27,12 @@ class CombinedAnalysis:
 
         self.real_root = config['paths']['real_root']
         self.sim_root = config['paths']['sim_root']
-        self.graphs_root = config['paths']['graphs_root']
-        self.params_root = config['paths']['params_root']
-        self.orderbook_root = config['paths']['orderbook_root']
-        self.correlation_root = config['paths']['correlation_root']
+        self.orderbook_input_root = config['paths']['orderbook_input_root']
+
+        self.graphs_root = config['paths']['graphs_output_root']
+        self.params_root = config['paths']['params_output_root']
+        self.orderbook_root = config['paths']['orderbook_output_root']
+        self.correlation_root = config['paths']['correlation_output_root']
 
         self.temp_params_path = config['paths']['params_path']
         self.sim_config_path = config['paths']['sim_config_path']
@@ -69,22 +71,24 @@ class CombinedAnalysis:
         params = real_analysis.generate_order_params()
 
         # Save temporary params (that the simulator will use)
-        real_analysis.params_to_file(params, self.temp_params_path)
+        real_analysis.json_to_file(params, self.temp_params_path)
         self.logger.info("Temporary parameters saved to: " + self.temp_params_path)
 
         # Save permanent params (that can be reused!)
         perma_params_path = self.params_root + self.sim_st.date().isoformat() + "/"
         pathlib.Path(perma_params_path).mkdir(parents=True, exist_ok=True)
         perma_params_path = perma_params_path + self.sim_st.time().isoformat() + ".json"
-        real_analysis.params_to_file(params, perma_params_path)
+        real_analysis.json_to_file(params, perma_params_path)
         self.logger.info("Permanent parameters saved to: " + self.temp_params_path)
 
         # Get orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
-        orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
-        # TODO: remove this magic string
+        closest_state_file_path = OrderBook.locate_closest_ob_state(self.orderbook_input_root, self.sim_st)
+        ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
+        ob_residuals = OrderBook().orderbook_residual(orders_df, trades_df, cancels_df)
+        ob_final = OrderBook().get_orderbook(ob_residuals, ob_state_df)
         orderbook_path = self.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
-        OrderBook.orderbook_to_file(orderbook, orderbook_path)
+        OrderBook.orderbook_to_file(ob_final, orderbook_path)
 
         self.logger.info("Orderbook saved to: " + orderbook_path)
 
@@ -152,7 +156,6 @@ class CombinedAnalysis:
             row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)])
             fd.write(row)
 
-
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
         interval = 10  # TODO: make this configurable
         times = list(range(interval, self.simulation_window, interval))
@@ -172,9 +175,11 @@ class CombinedAnalysis:
 
         return sim_means, sim_ub, sim_lb, times, real_times, real_prices
 
-    def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times, real_prices):
+    def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
+                                                              real_prices):
         # plot the data
-        self.__plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices, color_mean='k',
+        self.__plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
+                                                color_mean='k',
                                                 color_shading='k')
 
         if self.save_graphs:
@@ -196,8 +201,8 @@ class CombinedAnalysis:
             plt.show()
 
     def print_stat_comparison(self):
-        real_orders, _, _ = DataLoader.load_sampling_data(self.real_root, self.sampling_window_start_time,
-                                                          self.sampling_window_end_time, self.product)
+        real_orders, _, _ = DataLoader.load_split_data(self.real_root, self.sampling_window_start_time,
+                                                       self.sampling_window_end_time, self.product)
         sim_orders = self.sim_analysis.all_sims[0][0].compute()
 
         real_stats = Statistics.get_order_stats(real_orders)
@@ -237,8 +242,8 @@ class CombinedAnalysis:
         plt.legend(loc='upper right')
 
     def __fetch_real_data(self):
-        df = DataLoader().load_real_data(self.real_root, self.sim_st,
-                                         self.sim_st + timedelta(seconds=self.simulation_window), self.product)
+        df = DataLoader().load_feed(self.real_root, self.sim_st,
+                                    self.sim_st + timedelta(seconds=self.simulation_window), self.product)
         # [['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
 

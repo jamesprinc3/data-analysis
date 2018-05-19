@@ -28,7 +28,7 @@ class RealAnalysis:
         return secs * 10 ** 9
 
     @staticmethod
-    def params_to_file(params: dict, file_path: str):
+    def json_to_file(params: dict, file_path: str):
         with open(file_path, 'w') as fp:
             json.dump(params, fp)
 

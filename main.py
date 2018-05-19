@@ -17,7 +17,6 @@ from orderbook import OrderBook
 
 
 def get_all_data(st: datetime, config):
-
     real_root = config['paths']['real_root']
     product = config['data']['product']
 
@@ -25,11 +24,10 @@ def get_all_data(st: datetime, config):
     sam_w = int(config['window']['sampling'])
     sim_w = int(config['window']['simulation'])
 
-
-    # Get all data which we will use to reconstruct the order bool
+    # Get all data which we will use to reconstruct the order book
     all_ob_start_time = st - datetime.timedelta(seconds=ob_w)
     all_ob_end_time = st
-    all_ob_data = DataLoader().load_sampling_data(real_root, all_ob_start_time, all_ob_end_time, product)
+    all_ob_data = DataLoader().load_split_data(real_root, all_ob_start_time, all_ob_end_time, product)
 
     # Assume orderbook_window > sampling_window, and therefore filter already loaded ob data
     all_sample_start_time = st - datetime.timedelta(seconds=sam_w)
@@ -40,8 +38,8 @@ def get_all_data(st: datetime, config):
     # Get future data
     all_future_data_start_time = st
     all_future_data_end_time = st + datetime.timedelta(seconds=sim_w)
-    all_future_data = DataLoader().load_sampling_data(real_root, all_future_data_start_time, all_future_data_end_time,
-                                                      product)
+    all_future_data = DataLoader().load_split_data(real_root, all_future_data_start_time, all_future_data_end_time,
+                                                   product)
 
     return all_ob_data, all_sampling_data, all_future_data
 
@@ -87,7 +85,7 @@ def multi_combined_mode(st: datetime.datetime = None):
     all_data_st = take_secs(st, ob_w)
     all_data_et = add_secs(st, (num_predictions - 1) * interval)
 
-    all_data = DataLoader.load_sampling_data(real_root, all_data_st, all_data_et, product)
+    all_data = DataLoader.load_split_data(real_root, all_data_st, all_data_et, product)
 
     for i in range(0, num_predictions):
         sim_st = add_secs(st, interval * i)
@@ -126,13 +124,13 @@ def real_mode(st: datetime.datetime = None):
 
     sampling_window_start_time = st - datetime.timedelta(seconds=sampling_window)
     sampling_window_end_time = st
-    orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, sampling_window_start_time,
-                                                                     sampling_window_end_time, product)
+    orders_df, trades_df, cancels_df = DataLoader.load_split_data(real_root, sampling_window_start_time,
+                                                                  sampling_window_end_time, product)
     real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + product)
 
     if fit_distributions and params_path:
         params = real_analysis.generate_order_params()
-        real_analysis.params_to_file(params, params_path)
+        real_analysis.json_to_file(params, params_path)
     if graphs_root:
         real_analysis.generate_graphs(graphs_root)
 
@@ -145,10 +143,10 @@ def orderbook_mode():
     orderbook_window_start_time = start_time - datetime.timedelta(seconds=orderbook_window)
     orderbook_window_end_time = start_time
 
-    orders_df, trades_df, cancels_df = DataLoader.load_sampling_data(real_root, orderbook_window_start_time,
-                                                                     orderbook_window_end_time, product)
+    orders_df, trades_df, cancels_df = DataLoader.load_split_data(real_root, orderbook_window_start_time,
+                                                                  orderbook_window_end_time, product)
 
-    orderbook = OrderBook.orderbook_from_df(orders_df, trades_df, cancels_df)
+    orderbook = OrderBook.orderbook_residual(orders_df, trades_df, cancels_df)
     output_file = "/Users/jamesprince/project-data/orderbook-" + orderbook_window_end_time.isoformat() + ".csv"
     OrderBook.orderbook_to_file(orderbook, output_file)
 

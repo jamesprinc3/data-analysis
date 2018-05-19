@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -71,7 +72,8 @@ class SimulationAnalysis:
     def calculate_confidences(time_prices_dict, level: float):
         time_confidence_dict = {}
         for time_in_seconds, prices in time_prices_dict.items():
-            interval = st.t.interval(level, len(prices) - 1, loc=np.mean(prices), scale=st.sem(prices))
+            filt_prices = list(filter(lambda p: not math.isnan(p), prices))
+            interval = st.t.interval(level, len(filt_prices) - 1, loc=np.mean(filt_prices), scale=st.sem(filt_prices))
             time_confidence_dict[time_in_seconds] = interval
 
         return time_confidence_dict

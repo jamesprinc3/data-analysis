@@ -49,12 +49,13 @@ class DataLoader:
 
         return return_list
 
-    def load_real_data(self, root, start_time: datetime, end_time: datetime, product) -> dd:
+    def load_feed(self, root, start_time: datetime, end_time: datetime, product: str) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""
         # Assume data is on the same day and just hours apart for now
         hour_delta = end_time.hour - start_time.hour
         files_to_load = []
 
+        # TODO: split this function up!
         for i in range(0, hour_delta + 1):
             filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"
             self.logger.debug(filename)
@@ -73,8 +74,8 @@ class DataLoader:
         return feed_df
 
     @staticmethod
-    def load_sampling_data(real_root, start_time, end_time, product):
-        feed_df = DataLoader().load_real_data(real_root, start_time, end_time, product)
+    def load_split_data(real_root, start_time, end_time, product):
+        feed_df = DataLoader().load_feed(real_root, start_time, end_time, product)
         feed_df = DataSplitter.get_product(product, feed_df)
 
         orders_df = DataSplitter.get_orders(feed_df)
