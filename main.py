@@ -72,7 +72,7 @@ def multi_combined_mode(st: datetime.datetime = None):
     if not st:
         st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
 
-    real_root = config['paths']['real_root']
+    real_root = root_path + config['paths']['real_root']
     product = config['data']['product']
 
     ob_w = int(config['window']['orderbook'])
@@ -171,16 +171,18 @@ if __name__ == "__main__":
 
     mode = config['behaviour']['mode']
 
+    root_path = config['full_paths']['root']
+
     # Ensure all paths exist
-    for path_key in config['paths']:
+    for path_key in config['part_paths']:
         try:
-            if pathlib.Path(config['paths'][path_key]).mkdir(parents=True, exist_ok=True):
+            if pathlib.Path(root_path + config['part_paths'][path_key]).mkdir(parents=True, exist_ok=True):
                 raise FileNotFoundError
         except FileExistsError:
             pass
         except FileNotFoundError:
-            logger.info(config['paths'][path_key] + " does not exist")
-        logger.info(config['paths'][path_key] + " exists")
+            logger.info(config['part_paths'][path_key] + " does not exist")
+        logger.info(config['part_paths'][path_key] + " exists")
 
     if mode == "combined":
         combined_mode()
