@@ -17,7 +17,9 @@ from orderbook import OrderBook
 
 
 def get_all_data(st: datetime, config):
-    real_root = config['paths']['real_root']
+    root = config['full_paths']['root']
+
+    real_root = root + config['part_paths']['real_root']
     product = config['data']['product']
 
     ob_w = int(config['window']['orderbook'])

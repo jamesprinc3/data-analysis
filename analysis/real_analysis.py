@@ -1,4 +1,5 @@
 import json
+from multiprocessing.pool import Pool
 from typing import List
 
 import dask.dataframe as dd
@@ -36,37 +37,31 @@ class RealAnalysis:
         params = {}
         distributions = {}
         ratios = {}
-        relative_order_price_distributions = DataTransformer.price_distributions(self.trades_df, self.orders_df,
-                                                                                 relative=True)
 
-        # Buy/sell Price relative
-        distributions["buy_price_relative"] = relative_order_price_distributions["buy"][1]
-        distributions["sell_price_relative"] = relative_order_price_distributions["sell"][1]
+        pool = Pool(processes=6)
+
+        # Find distributions using different procs
+        relative_order_price_distributions = pool.apply_async(DataTransformer.price_distributions,
+                                                              (self.trades_df, self.orders_df,), dict(relative=True))
 
         # Buy/sell Price
-        order_price_distributions = DataTransformer.price_distributions(self.trades_df, self.orders_df, relative=False)
-        distributions["buy_price"] = order_price_distributions["buy"][1]
-        distributions["sell_price"] = order_price_distributions["sell"][1]
+        order_price_distributions = pool.apply_async(DataTransformer.price_distributions,
+                                                     (self.trades_df, self.orders_df,), dict(relative=False))
 
         # Buy/sell price Cancellation
-        relative_cancel_price_distributions = DataTransformer.price_distributions(self.trades_df,
-                                                                                  self.cancels_df)
-        distributions["buy_cancel_price"] = relative_cancel_price_distributions["buy"][1]
-        distributions["sell_cancel_price"] = relative_cancel_price_distributions["sell"][1]
+        relative_cancel_price_distributions = pool.apply_async(DataTransformer.price_distributions,
+                                                               (self.trades_df, self.cancels_df,))
 
         # Limit/ Market Order Size
         limit_orders = DataSplitter.get_limit_orders(self.orders_df)
-        limit_size_best_fit, limit_size_best_fit_params = DistributionFitter.best_fit_distribution(limit_orders['size'])
-        _, distributions["limit_size"] = DistributionFitter.get_distribution_string(limit_size_best_fit,
-                                                                                    limit_size_best_fit_params)
+        limit_size = pool.apply_async(DistributionFitter.best_fit_distribution,
+                                      (limit_orders['size'],))
 
         market_orders = DataSplitter.get_market_orders(self.orders_df)
-        market_size_best_fit, market_size_best_fit_params = DistributionFitter.best_fit_distribution(
-            market_orders['size'])
-        _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
-                                                                                     market_size_best_fit_params)
+        market_size = pool.apply_async(DistributionFitter.best_fit_distribution,
+                                       (market_orders['size'],))
 
-        _, distributions["interval"] = DataTransformer.intervals_distribution(self.orders_df)
+        intervals = pool.apply_async(DataTransformer.intervals_distribution, (self.orders_df,))
 
         ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
         ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
@@ -75,6 +70,26 @@ class RealAnalysis:
 
         params["distributions"] = distributions
         params['ratios'] = ratios
+
+        # Buy/sell Price relative
+        distributions["buy_price_relative"] = relative_order_price_distributions.get()["buy"][1]
+        distributions["sell_price_relative"] = relative_order_price_distributions.get()["sell"][1]
+
+        distributions["buy_price"] = order_price_distributions.get()["buy"][1]
+        distributions["sell_price"] = order_price_distributions.get()["sell"][1]
+
+        distributions["buy_cancel_price"] = relative_cancel_price_distributions.get()["buy"][1]
+        distributions["sell_cancel_price"] = relative_cancel_price_distributions.get()["sell"][1]
+
+        limit_size_best_fit, limit_size_best_fit_params = limit_size.get()
+        _, distributions["limit_size"] = DistributionFitter.get_distribution_string(limit_size_best_fit,
+                                                                                    limit_size_best_fit_params)
+
+        market_size_best_fit, market_size_best_fit_params = market_size.get()
+        _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
+                                                                                     market_size_best_fit_params)
+
+        _, distributions["interval"] = intervals.get()
 
         return params
 

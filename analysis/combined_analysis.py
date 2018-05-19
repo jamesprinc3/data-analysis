@@ -162,7 +162,7 @@ class CombinedAnalysis:
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
         interval = 10  # TODO: make this configurable
-        times = list(range(interval, self.simulation_window, interval))
+        times = list(range(interval, self.simulation_window + interval, interval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         self.logger.info(confidence_intervals)
