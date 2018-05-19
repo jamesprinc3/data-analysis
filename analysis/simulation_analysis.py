@@ -18,15 +18,17 @@ class SimulationAnalysis:
         :param config: initial application config
         """
         self.logger = logging.getLogger()
-        self.root = config['paths']['sim_root']
+
+        root_path = config['full_paths']['root']
+        self.sim_root = root_path + config['part_paths']['sim_root']
         self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
 
-        self.all_sims = DataLoader().load_sim_data(self.root, 0, 100)
+        self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, 100)
 
     def analyse(self):
         # logger.debug(self.dirs)
         # for directory in self.dirs:
-        orders_dd, trades_dd, cancels_dd = DataLoader().load_sim_data(self.root)[0]
+        orders_dd, trades_dd, cancels_dd = DataLoader().load_sim_data(self.sim_root)[0]
 
         orders_df = orders_dd.compute()
         # self.graph_creator.graph_order_sizes(orders_df)
