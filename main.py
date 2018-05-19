@@ -72,7 +72,7 @@ def multi_combined_mode(st: datetime.datetime = None):
     if not st:
         st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
 
-    real_root = root_path + config['paths']['real_root']
+    real_root = root_path + config['part_paths']['real_root']
     product = config['data']['product']
 
     ob_w = int(config['window']['orderbook'])

@@ -5,6 +5,9 @@ import os
 import subprocess
 from datetime import timedelta
 
+import matplotlib
+matplotlib.use('PS')
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
@@ -24,19 +27,20 @@ class CombinedAnalysis:
         self.logger = logging.getLogger()
 
         self.config = config
+        root_path = config['full_paths']['root']
 
-        self.real_root = config['paths']['real_root']
-        self.sim_root = config['paths']['sim_root']
-        self.orderbook_input_root = config['paths']['orderbook_input_root']
+        self.real_root = root_path + config['part_paths']['real_root']
+        self.sim_root = root_path + config['part_paths']['sim_root']
+        self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
 
-        self.graphs_root = config['paths']['graphs_output_root']
-        self.params_root = config['paths']['params_output_root']
-        self.orderbook_root = config['paths']['orderbook_output_root']
-        self.correlation_root = config['paths']['correlation_output_root']
+        self.graphs_root = root_path + config['part_paths']['graphs_output_root']
+        self.params_root = root_path + config['part_paths']['params_output_root']
+        self.orderbook_root = root_path + config['part_paths']['orderbook_output_root']
+        self.correlation_root = root_path + config['part_paths']['correlation_output_root']
 
-        self.temp_params_path = config['paths']['params_path']
-        self.sim_config_path = config['paths']['sim_config_path']
-        self.jar_path = config['paths']['jar_path']
+        self.temp_params_path = root_path + config['part_paths']['params_path']
+        self.sim_config_path = root_path + config['part_paths']['sim_config_path']
+        self.jar_path = root_path + config['part_paths']['jar_path']
 
         self.sampling_window = int(config['window']['sampling'])
         self.simulation_window = int(config['window']['simulation'])
