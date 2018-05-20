@@ -2,6 +2,7 @@ import csv
 import datetime
 import logging
 import os
+import signal
 import subprocess
 from datetime import timedelta
 
@@ -43,6 +44,13 @@ class CombinedAnalysis:
         self.sim_config_path = root_path + config['part_paths']['sim_config_path']
         self.jar_path = root_path + config['part_paths']['jar_path']
 
+        sim_logs_root = root_path + config['part_paths']['sim_logs'] \
+                             + sim_st.date().isoformat() + "/"
+
+        pathlib.Path(sim_logs_root).mkdir(parents=True, exist_ok=True)
+
+        self.sim_logs_path = sim_logs_root + sim_st.time().isoformat() + ".log"
+
         self.sampling_window = int(config['window']['sampling'])
         self.simulation_window = int(config['window']['simulation'])
         self.orderbook_window = int(config['window']['orderbook'])
@@ -71,7 +79,7 @@ class CombinedAnalysis:
 
     def run_simulation(self):
         params_path = self.params_root + self.sim_st.date().isoformat() \
-                            + "/" + self.sim_st.time().isoformat() + ".json"
+                      + "/" + self.sim_st.time().isoformat() + ".json"
         if os.path.isfile(params_path):
             self.logger.info("Params file exists, therefore we're using it! " + params_path)
         else:
@@ -99,10 +107,10 @@ class CombinedAnalysis:
         # Generate .conf file
         # TODO: generate this in a function further up the chain
         sim_config = {'paths': {
-                'simRoot': self.sim_root,
-                'params': params_path,
-                'orderbook': orderbook_path
-            },
+            'simRoot': self.sim_root,
+            'params': params_path,
+            'orderbook': orderbook_path
+        },
 
             'execution': {
                 'numSimulations': self.num_simulators,
@@ -126,12 +134,21 @@ class CombinedAnalysis:
 
         self.logger.info("Running simulations")
 
+        # Have to initialise name so it can be terminated in the finally clause
+        process = None
+
         try:
-            process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+            process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
             output, error = process.communicate(timeout=self.sim_timeout)
 
-            self.logger.info("output: " + str(output) + " error: " + str(error))
             self.logger.info("Simulations complete")
+
+            with open(self.sim_logs_path, 'w') as f:
+                f.write(str(output))
+                f.write("\n")
+                f.write(str(error))
+
+            self.logger.info("Writing output and error to: " + self.sim_logs_path)
 
             # Validate
             sim_analysis = SimulationAnalysis(self.config)
@@ -141,7 +158,10 @@ class CombinedAnalysis:
             self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
             self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
         except subprocess.TimeoutExpired:
-            self.logger.error("Timeout limit for sim was reached, JVM killed.")
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
+
+
 
     def append_final_prices(self, dst, sim_means, real_prices):
         last_real_price = real_prices.dropna().iloc[-1]
@@ -201,6 +221,8 @@ class CombinedAnalysis:
 
         if self.show_graphs:
             plt.show()
+
+        plt.close()
 
     def print_stat_comparison(self):
         real_orders, _, _ = DataLoader.load_split_data(self.real_root, self.sampling_window_start_time,
