@@ -90,27 +90,30 @@ def multi_combined_mode(st: datetime.datetime = None):
     all_data = DataLoader.load_split_data(real_root, all_data_st, all_data_et, product)
 
     for i in range(0, num_predictions):
-        sim_st = add_secs(st, interval * i)
-        sim_et = add_secs(sim_st, sim_w)
+        try:
+            sim_st = add_secs(st, interval * i)
+            sim_et = add_secs(sim_st, sim_w)
 
-        ob_st = take_secs(sim_st, ob_w)
-        ob_et = sim_st
+            ob_st = take_secs(sim_st, ob_w)
+            ob_et = sim_st
 
-        sam_st = take_secs(sim_st, sam_w)
-        sam_et = sim_st
+            sam_st = take_secs(sim_st, sam_w)
+            sam_et = sim_st
 
-        all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
-                          all_data)
-
-        all_sampling_data = map(lambda x: DataSplitter.get_between(x, sam_st, sam_et),
-                                all_data)
-
-        all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
+            all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
                               all_data)
 
-        combined_analysis = CombinedAnalysis(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+            all_sampling_data = map(lambda x: DataSplitter.get_between(x, sam_st, sam_et),
+                                    all_data)
 
-        combined_analysis.run_simulation()
+            all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
+                                  all_data)
+
+            combined_analysis = CombinedAnalysis(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+
+            combined_analysis.run_simulation()
+        except Exception as exception:
+            logger.error("Combined failed, skipping, at: " + st.isoformat() + "\nError was\n" + str(exception))
 
 
 def real_mode(st: datetime.datetime = None):
