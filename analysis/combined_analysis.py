@@ -6,6 +6,7 @@ import subprocess
 from datetime import timedelta
 
 import matplotlib
+
 matplotlib.use('PS')
 
 import matplotlib.pyplot as plt
@@ -38,7 +39,7 @@ class CombinedAnalysis:
         self.orderbook_root = root_path + config['part_paths']['orderbook_output_root']
         self.correlation_root = root_path + config['part_paths']['correlation_output_root']
 
-        self.temp_params_path = root_path + config['part_paths']['params_path']
+        # self.temp_params_path = root_path + config['part_paths']['params_path']
         self.sim_config_path = root_path + config['part_paths']['sim_config_path']
         self.jar_path = root_path + config['part_paths']['jar_path']
 
@@ -69,21 +70,20 @@ class CombinedAnalysis:
         self.all_future_data = all_future_data
 
     def run_simulation(self):
-        # Get parameters
-        orders_df, trades_df, cancels_df = self.all_sampling_data
-        real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
-        params = real_analysis.generate_order_params()
+        params_path = self.params_root + self.sim_st.date().isoformat() \
+                            + "/" + self.sim_st.time().isoformat() + ".json"
+        if os.path.isfile(params_path):
+            self.logger.info("Params file exists, therefore we're using it! " + params_path)
+        else:
+            self.logger.info("Params file does not exist at: " + params_path + "\nGenerating params...")
+            # Get parameters
+            orders_df, trades_df, cancels_df = self.all_sampling_data
+            real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
+            params = real_analysis.generate_order_params()
 
-        # Save temporary params (that the simulator will use)
-        real_analysis.json_to_file(params, self.temp_params_path)
-        self.logger.info("Temporary parameters saved to: " + self.temp_params_path)
-
-        # Save permanent params (that can be reused!)
-        perma_params_path = self.params_root + self.sim_st.date().isoformat() + "/"
-        pathlib.Path(perma_params_path).mkdir(parents=True, exist_ok=True)
-        perma_params_path = perma_params_path + self.sim_st.time().isoformat() + ".json"
-        real_analysis.json_to_file(params, perma_params_path)
-        self.logger.info("Permanent parameters saved to: " + self.temp_params_path)
+            # Save params (that can be reused!)
+            real_analysis.json_to_file(params, params_path)
+            self.logger.info("Permanent parameters saved to: " + params_path)
 
         # Get orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
@@ -99,10 +99,10 @@ class CombinedAnalysis:
         # Generate .conf file
         # TODO: generate this in a function further up the chain
         sim_config = {'paths': {
-            'simRoot': self.sim_root,
-            'params': self.temp_params_path,
-            'orderbook': orderbook_path
-        },
+                'simRoot': self.sim_root,
+                'params': params_path,
+                'orderbook': orderbook_path
+            },
 
             'execution': {
                 'numSimulations': self.num_simulators,
@@ -153,8 +153,6 @@ class CombinedAnalysis:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
-
-        print("meh")
 
         with open(dst, 'a', newline='') as fd:
             row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)]) + "\n"

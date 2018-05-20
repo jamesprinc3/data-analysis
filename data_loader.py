@@ -4,6 +4,7 @@ from datetime import datetime
 
 import dask.dataframe as dd
 import pandas as pd
+from pandas.errors import EmptyDataError
 
 from data_splitter import DataSplitter
 
@@ -23,7 +24,6 @@ class DataLoader:
 
     def load_sim_data(self, root, start_index=0, end_index=1) -> (dd, dd, dd):
         """
-
         :param root: directory that contains the output from OrderBookSimulator
         :param start_index: the (inclusive) index we wish to start from
         :param end_index: the (exclusive) index we wish to end on
@@ -35,17 +35,20 @@ class DataLoader:
         dirs_to_load = dirs[start_index:end_index]
         return_list = []
         for directory in dirs_to_load:
-            orders_path: str = data_root + directory + "/orders.csv"
-            trades_path: str = data_root + directory + "/trades.csv"
-            cancels_path: str = data_root + directory + "/cancels.csv"
+            try:
+                orders_path: str = data_root + directory + "/orders.csv"
+                trades_path: str = data_root + directory + "/trades.csv"
+                cancels_path: str = data_root + directory + "/cancels.csv"
 
-            self.logger.debug(orders_path)
+                self.logger.debug(orders_path)
 
-            orders_dd = self.format_dd(dd.read_csv(orders_path))
-            trades_dd = self.format_dd(dd.read_csv(trades_path))
-            cancels_dd = self.format_dd(dd.read_csv(cancels_path))
+                orders_dd = self.format_dd(dd.read_csv(orders_path))
+                trades_dd = self.format_dd(dd.read_csv(trades_path))
+                cancels_dd = self.format_dd(dd.read_csv(cancels_path))
 
-            return_list.append((orders_dd, trades_dd, cancels_dd))
+                return_list.append((orders_dd, trades_dd, cancels_dd))
+            except EmptyDataError:
+                self.logger.info("Failed to load " + directory)
 
         return return_list
 
