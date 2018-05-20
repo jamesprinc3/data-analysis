@@ -90,9 +90,10 @@ class CombinedAnalysis:
         closest_state_file_path = OrderBook.locate_closest_ob_state(self.orderbook_input_root, self.sim_st)
         ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
         ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
+
+        # Save orderbook
         orderbook_path = self.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(ob_final, orderbook_path)
-
         self.logger.info("Orderbook saved to: " + orderbook_path)
 
         # Generate .conf file

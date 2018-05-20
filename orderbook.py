@@ -71,14 +71,14 @@ class OrderBook:
                                  & ~all_orders['order_id'].isin(cancelled_order_ids)]
 
         # This variable is used in the pandas query below
-        final_trade_price = trades.iloc[-1]['price']
+        final_trade_price = trades['price'].dropna().iloc[-1]
 
-        ob_final = DataSplitter.get_side("buy", ob_filtered).query('price <= @final_trade_price').append(
-            DataSplitter.get_side("sell", ob_filtered).query('price >= @final_trade_price')
+        ob_final = DataSplitter.get_side("buy", ob_filtered).query('price < @final_trade_price').append(
+            DataSplitter.get_side("sell", ob_filtered).query('price > @final_trade_price')
         )
 
-        if not OrderBook.check_ob_valid(ob_final):
-            raise AssertionError("OrderBook does not appear to be valid")
+        # if not OrderBook.check_ob_valid(ob_final):
+        #     raise AssertionError("OrderBook does not appear to be valid")
 
         return ob_final.reset_index(drop=True)
 

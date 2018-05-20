@@ -54,8 +54,8 @@ class DataUtils:
 
     @staticmethod
     def fuzzy_join(orders: dd, price_over_time: dd) -> dd:
-        orders.loc['price'] = orders['price'].apply(pd.to_numeric)
-        orders.loc['time'] = orders['time'].apply(pd.to_datetime)
+        orders.loc[:, 'price'] = pd.to_numeric(orders['price'])
+        orders.loc[:, 'time'] = pd.to_datetime(orders['time'])
 
         price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
 
