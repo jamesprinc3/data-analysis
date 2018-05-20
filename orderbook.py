@@ -54,29 +54,40 @@ class OrderBook:
             return ob_state
 
     @staticmethod
-    def get_orderbook(residual_orders: dd, ob_state_df: dd):
-        seq_num = ob_state_df['sequence'].iloc[0]
-        residual_orders = residual_orders[residual_orders['sequence'] > seq_num]
-
-        ob_final_state = ob_state_df.append(residual_orders)[['side', 'price', 'size']]
-
-        return ob_final_state
-
-    @staticmethod
-    def orderbook_residual(orders: dd, trades: dd, cancels: dd) -> dd:
+    def get_orderbook(orders: dd, trades: dd, cancels: dd, ob_state: dd) -> dd:
         """Gets those orders which are still active at the end of the feed"""
         # Find those orders which are no longer on the book
         # TODO: find those orders which were modified, handle carefully
+        seq_num = ob_state['sequence'].iloc[0]
+        residual_orders = orders[orders['sequence'] > seq_num]
+        all_orders = ob_state.append(residual_orders)[['side', 'order_id', 'price', 'size']]
+
         executed_order_ids = trades['order_id'].unique()
         cancelled_order_ids = cancels['order_id'].unique()
 
         # Find those orders which are still on the book
-        remaining_orders = orders[~orders['order_id'].isin(executed_order_ids)
-                                  & ~orders['order_id'].isin(cancelled_order_ids)]
+        ob_filtered = all_orders[~all_orders['order_id'].isin(executed_order_ids)
+                                 & ~all_orders['order_id'].isin(cancelled_order_ids)]
 
-        return remaining_orders.reset_index(drop=True)
+        final_trade_price = trades.iloc[-1]['price']
+
+        ob_final = DataSplitter.get_side("buy", ob_filtered).query('price <= @final_trade_price').append(
+            DataSplitter.get_side("sell", ob_filtered).query('price >= @final_trade_price')
+        )
+
+        if not OrderBook.check_ob_valid(ob_final):
+            raise AssertionError("OrderBook does not appear to be valid")
+
+        return ob_final.reset_index(drop=True)
+
+    @staticmethod
+    def check_ob_valid(ob: dd) -> bool:
+        highest_buy = DataSplitter.get_side("buy", ob)['price'].max()
+        lowest_sell = DataSplitter.get_side("sell", ob)['price'].min()
+
+        return highest_buy < lowest_sell
 
     @staticmethod
     def orderbook_to_file(orderbook: pd.DataFrame, file_path: str):
-        orderbook.sort_values(by='price')
+        orderbook.sort_values(by='price', inplace=True)
         orderbook.to_csv(file_path)

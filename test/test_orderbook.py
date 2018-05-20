@@ -20,16 +20,21 @@ class TestLoadOrderbook(TestCase):
         st = datetime.datetime(2018, 5, 16, 18, 0, 0)
         et = datetime.datetime(2018, 5, 16, 18, 10, 0)
 
-        all_data = DataLoader.load_split_data("/Users/jamesprince/project-data/new-nimue-backup/feed-consolidated/",
+        all_data = DataLoader.load_split_data("/Users/jamesprince/project-data/data/consolidated-feed/",
                                               st, et, "BTC-USD")
 
-        ob_state_df = OrderBook().load_orderbook_state("/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
+        print(all_data[1]['taker_order_id'].unique())
+        print(all_data[1]['maker_order_id'].unique())
 
-        ob_residuals = OrderBook().orderbook_residual(*all_data)
+        ob_state_df = OrderBook().load_orderbook_state("/Users/jamesprince/project-data/data/raw-orderbooks/BTC-USD/2018-05-16T18:05:08.067228.json")
+        ob_final = OrderBook().get_orderbook(*all_data, ob_state_df)
 
-        ob_final = OrderBook().get_orderbook(ob_residuals, ob_state_df)
-
+        print(ob_final)
         print(ob_final['size'].apply(pd.to_numeric).sum())
+
+        OrderBook.orderbook_to_file(ob_final,
+                                    "/Users/jamesprince/project-data/control/aligned-orderbooks/2018-05-16T18:10:00.csv")
+
 
     def test_can_locate_files(self):
         time = datetime.datetime(2018, 5, 16, 18, 0, 0)
@@ -43,3 +48,9 @@ class TestLoadOrderbook(TestCase):
         spread = OrderBook.get_spread(ob_state_df)
 
         print(spread)
+
+    def test_ob_valid(self):
+        ob_state_df = OrderBook().load_orderbook_state(
+            "/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
+
+        OrderBook.check_ob_valid(ob_state_df)

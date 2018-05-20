@@ -89,8 +89,7 @@ class CombinedAnalysis:
         orders_df, trades_df, cancels_df = self.all_ob_data
         closest_state_file_path = OrderBook.locate_closest_ob_state(self.orderbook_input_root, self.sim_st)
         ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
-        ob_residuals = OrderBook().orderbook_residual(orders_df, trades_df, cancels_df)
-        ob_final = OrderBook().get_orderbook(ob_residuals, ob_state_df)
+        ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
         orderbook_path = self.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(ob_final, orderbook_path)
 

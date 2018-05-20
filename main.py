@@ -141,14 +141,21 @@ def simulation_mode():
     SimulationAnalysis(config).analyse()
 
 
-def orderbook_mode():
-    orderbook_window_start_time = start_time - datetime.timedelta(seconds=orderbook_window)
-    orderbook_window_end_time = start_time
+def orderbook_mode(st: datetime.datetime = None):
+    if not st:
+        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
+
+    root = config['full_paths']['root']
+    orderbook_path = root + config['part_paths']['orderbook_path']
+
+    orderbook_window_start_time = st - datetime.timedelta(seconds=orderbook_window)
+    orderbook_window_end_time = st
 
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(real_root, orderbook_window_start_time,
                                                                   orderbook_window_end_time, product)
 
-    orderbook = OrderBook.orderbook_residual(orders_df, trades_df, cancels_df)
+    ob_state = OrderBook.load_orderbook_state(orderbook_path)
+    orderbook = OrderBook.get_orderbook(orders_df, trades_df, cancels_df, ob_state)
     output_file = "/Users/jamesprince/project-data/orderbook-" + orderbook_window_end_time.isoformat() + ".csv"
     OrderBook.orderbook_to_file(orderbook, output_file)
 
