@@ -144,7 +144,7 @@ class CombinedAnalysis:
             self.logger.error("Timeout limit for sim was reached, JVM killed.")
 
     def append_final_prices(self, dst, sim_means, real_prices):
-        last_real_price = real_prices.iloc[-1]
+        last_real_price = real_prices.dropna().iloc[-1]
         last_sim_price = sim_means[-1]
 
         if not os.path.isfile(dst):
@@ -157,7 +157,7 @@ class CombinedAnalysis:
         print("meh")
 
         with open(dst, 'a', newline='') as fd:
-            row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)])
+            row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)]) + "\n"
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
