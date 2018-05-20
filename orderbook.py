@@ -59,7 +59,8 @@ class OrderBook:
         # Find those orders which are no longer on the book
         # TODO: find those orders which were modified, handle carefully
         seq_num = ob_state['sequence'].iloc[0]
-        residual_orders = orders[orders['sequence'] > seq_num]
+        limit_orders = DataSplitter.get_limit_orders(orders)
+        residual_orders = limit_orders[limit_orders['sequence'] > seq_num]
         all_orders = ob_state.append(residual_orders)[['side', 'order_id', 'price', 'size']]
 
         executed_order_ids = trades['order_id'].unique()
@@ -69,6 +70,7 @@ class OrderBook:
         ob_filtered = all_orders[~all_orders['order_id'].isin(executed_order_ids)
                                  & ~all_orders['order_id'].isin(cancelled_order_ids)]
 
+        # This variable is used in the pandas query below
         final_trade_price = trades.iloc[-1]['price']
 
         ob_final = DataSplitter.get_side("buy", ob_filtered).query('price <= @final_trade_price').append(
