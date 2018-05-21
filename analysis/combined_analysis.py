@@ -47,7 +47,7 @@ class CombinedAnalysis:
         self.jar_path = root_path + config['part_paths']['jar_path']
 
         sim_logs_root = root_path + config['part_paths']['sim_logs'] \
-                             + sim_st.date().isoformat() + "/"
+                        + sim_st.date().isoformat() + "/"
 
         pathlib.Path(sim_logs_root).mkdir(parents=True, exist_ok=True)
 
@@ -64,6 +64,7 @@ class CombinedAnalysis:
         self.show_graphs = config['behaviour'].getboolean('show_graphs')
         self.save_graphs = config['behaviour'].getboolean('save_graphs')
         self.fit_distributions = config['behaviour'].getboolean('fit_distributions')
+        self.use_cached_params = config['behaviour'].getboolean('use_cached_params')
         self.sim_timeout = int(config['behaviour']['sim_timeout'])
         self.num_simulators = int(config['behaviour']['num_simulators'])
 
@@ -83,10 +84,10 @@ class CombinedAnalysis:
     def run_simulation(self):
         params_path = self.params_root + self.sim_st.date().isoformat() \
                       + "/" + self.sim_st.time().isoformat() + ".json"
-        if os.path.isfile(params_path):
+        if self.use_cached_params and os.path.isfile(params_path):
             self.logger.info("Params file exists, therefore we're using it! " + params_path)
         else:
-            self.logger.info("Params file does not exist at: " + params_path + "\nGenerating params...")
+            self.logger.info("Not using params cache" + "\nGenerating params...")
             # Get parameters
             orders_df, trades_df, cancels_df = self.all_sampling_data
             real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
@@ -138,11 +139,11 @@ class CombinedAnalysis:
         self.logger.info("Running simulations")
 
         # Have to initialise name so it can be terminated in the finally clause
-        process = None
+        sim_process = None
 
         try:
-            process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
-            output, error = process.communicate(timeout=self.sim_timeout)
+            sim_process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
+            output, error = sim_process.communicate(timeout=self.sim_timeout)
 
             self.logger.info("Simulations complete")
 
@@ -153,18 +154,18 @@ class CombinedAnalysis:
 
             self.logger.info("Writing output and error to: " + self.sim_logs_path)
 
-            # Validate
-            sim_analysis = SimulationAnalysis(self.config, self.sim_st)
-            validation_data = self.get_validation_data(sim_analysis)
-
-            correlation_file_path = self.correlation_root + "corr.csv"
-            self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
-            self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
+            self.validate_analyses()
         except subprocess.TimeoutExpired:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
             self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
 
+    def validate_analyses(self):
+        sim_analysis = SimulationAnalysis(self.config, self.sim_st)
+        validation_data = self.get_validation_data(sim_analysis)
 
+        correlation_file_path = self.correlation_root + "corr.csv"
+        self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
+        self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
 
     def append_final_prices(self, dst, sim_means, real_prices):
         last_real_price = real_prices.dropna().iloc[-1]

@@ -40,8 +40,6 @@ class DataLoader:
                 trades_path: str = data_root + directory + "/trades.csv"
                 cancels_path: str = data_root + directory + "/cancels.csv"
 
-                self.logger.debug(orders_path)
-
                 orders_dd = self.format_dd(dd.read_csv(orders_path))
                 trades_dd = self.format_dd(dd.read_csv(trades_path))
                 cancels_dd = self.format_dd(dd.read_csv(cancels_path))
