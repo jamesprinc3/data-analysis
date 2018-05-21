@@ -90,16 +90,16 @@ def multi_combined_mode(st: datetime.datetime = None):
     all_data = DataLoader.load_split_data(real_root, all_data_st, all_data_et, product)
 
     for i in range(0, num_predictions):
+        sim_st = add_secs(st, interval * i)
+        sim_et = add_secs(sim_st, sim_w)
+
+        ob_st = take_secs(sim_st, ob_w)
+        ob_et = sim_st
+
+        sam_st = take_secs(sim_st, sam_w)
+        sam_et = sim_st
+
         try:
-            sim_st = add_secs(st, interval * i)
-            sim_et = add_secs(sim_st, sim_w)
-
-            ob_st = take_secs(sim_st, ob_w)
-            ob_et = sim_st
-
-            sam_st = take_secs(sim_st, sam_w)
-            sam_et = sim_st
-
             all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
                               all_data)
 
@@ -113,7 +113,7 @@ def multi_combined_mode(st: datetime.datetime = None):
 
             combined_analysis.run_simulation()
         except Exception as exception:
-            logger.error("Combined failed, skipping, at: " + st.isoformat() + "\nError was\n" + str(exception))
+            logger.error("Combined failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
 
 
 def real_mode(st: datetime.datetime = None):
@@ -140,8 +140,11 @@ def real_mode(st: datetime.datetime = None):
         real_analysis.generate_graphs(graphs_root)
 
 
-def simulation_mode():
-    SimulationAnalysis(config).analyse()
+def simulation_mode(st: datetime.datetime = None):
+    if not st:
+        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
+
+    SimulationAnalysis(config, st).analyse()
 
 
 def orderbook_mode(st: datetime.datetime = None):

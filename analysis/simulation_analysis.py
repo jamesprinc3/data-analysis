@@ -1,3 +1,4 @@
+import datetime
 import logging
 import math
 from typing import List
@@ -13,14 +14,16 @@ from stats import Statistics
 
 
 class SimulationAnalysis:
-    def __init__(self, config):
+    def __init__(self, config, sim_st: datetime.datetime):
         """
         :param config: initial application config
         """
         self.logger = logging.getLogger()
 
         root_path = config['full_paths']['root']
-        self.sim_root = root_path + config['part_paths']['sim_root']
+        self.sim_root = root_path + config['part_paths']['sim_root'] \
+                        + sim_st.date().isoformat() \
+                        + "/" + sim_st.time().isoformat() + "/"
         self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
 
         self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, 100)

@@ -32,7 +32,9 @@ class CombinedAnalysis:
         root_path = config['full_paths']['root']
 
         self.real_root = root_path + config['part_paths']['real_root']
-        self.sim_root = root_path + config['part_paths']['sim_root']
+        self.sim_root = root_path + config['part_paths']['sim_root'] \
+                        + sim_st.date().isoformat() \
+                        + "/" + sim_st.time().isoformat() + "/"
         self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
 
         self.graphs_root = root_path + config['part_paths']['graphs_output_root']
@@ -66,6 +68,7 @@ class CombinedAnalysis:
         self.num_simulators = int(config['behaviour']['num_simulators'])
 
         self.ywindow = int(config['graphs']['ywindow'])
+        self.xinterval = int(config['graphs']['xinterval'])
 
         self.sampling_window_start_time = sim_st - timedelta(seconds=self.sampling_window)
         self.sampling_window_end_time = sim_st
@@ -151,7 +154,7 @@ class CombinedAnalysis:
             self.logger.info("Writing output and error to: " + self.sim_logs_path)
 
             # Validate
-            sim_analysis = SimulationAnalysis(self.config)
+            sim_analysis = SimulationAnalysis(self.config, self.sim_st)
             validation_data = self.get_validation_data(sim_analysis)
 
             correlation_file_path = self.correlation_root + "corr.csv"
@@ -179,8 +182,7 @@ class CombinedAnalysis:
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
-        interval = 10  # TODO: make this configurable
-        times = list(range(interval, self.simulation_window + interval, interval))
+        times = list(range(self.xinterval, self.simulation_window + self.xinterval, self.xinterval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         self.logger.info(confidence_intervals)
