@@ -38,11 +38,13 @@ class CombinedAnalysis:
         self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
 
         self.graphs_root = root_path + config['part_paths']['graphs_output_root']
-        self.params_root = root_path + config['part_paths']['params_output_root']
+        self.params_path = root_path + config['part_paths']['params_output_root'] \
+                           + sim_st.date().isoformat() + "/"
+        pathlib.Path(self.params_path).mkdir(parents=True, exist_ok=True)
+
         self.orderbook_root = root_path + config['part_paths']['orderbook_output_root']
         self.correlation_root = root_path + config['part_paths']['correlation_output_root']
 
-        # self.temp_params_path = root_path + config['part_paths']['params_path']
         self.sim_config_path = root_path + config['part_paths']['sim_config_path']
         self.jar_path = root_path + config['part_paths']['jar_path']
 
@@ -82,8 +84,8 @@ class CombinedAnalysis:
         self.all_future_data = all_future_data
 
     def run_simulation(self):
-        params_path = self.params_root + self.sim_st.date().isoformat() \
-                      + "/" + self.sim_st.time().isoformat() + ".json"
+        params_path = self.params_path  \
+                    + self.sim_st.time().isoformat() + ".json"
         if self.use_cached_params and os.path.isfile(params_path):
             self.logger.info("Params file exists, therefore we're using it! " + params_path)
         else:
