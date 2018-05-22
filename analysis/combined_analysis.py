@@ -7,6 +7,7 @@ import subprocess
 from datetime import timedelta
 
 import matplotlib
+from pebble import concurrent
 
 matplotlib.use('PS')
 
@@ -155,12 +156,11 @@ class CombinedAnalysis:
                 f.write(str(error))
 
             self.logger.info("Writing output and error to: " + self.sim_logs_path)
-
-            self.validate_analyses()
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
             self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
 
+    @concurrent.process(timeout=None)
     def validate_analyses(self):
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         validation_data = self.get_validation_data(sim_analysis)

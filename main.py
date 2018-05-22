@@ -8,6 +8,9 @@ import time
 import dask.dataframe as dd
 
 from logging.config import fileConfig
+
+import pebble
+
 from analysis.combined_analysis import CombinedAnalysis
 from analysis.real_analysis import RealAnalysis
 from analysis.simulation_analysis import SimulationAnalysis
@@ -120,6 +123,10 @@ def multi_combined_mode(st: datetime.datetime = None):
             combined_analysis = CombinedAnalysis(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
             combined_analysis.run_simulation()
+
+            logger.info("Starting validation in other proc")
+            combined_analysis.validate_analyses()
+            logger.info("Validation started")
 
             # Check that previous validation has ended
             # if validation_process is not None:
