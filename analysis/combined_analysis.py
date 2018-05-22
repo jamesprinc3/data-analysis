@@ -121,6 +121,7 @@ class CombinedAnalysis:
 
             'execution': {
                 'numSimulations': self.num_simulators,
+                'simulationSeconds': self.simulation_window,
                 'parallel': True,
                 'logLevel': "INFO"
             },

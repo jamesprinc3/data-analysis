@@ -17,6 +17,8 @@ from stats import Statistics
 
 
 class SimulationAnalysis:
+    logger = logging.getLogger()
+
     def __init__(self, config, sim_st: datetime.datetime):
         """
         :param config: initial application config
@@ -36,7 +38,9 @@ class SimulationAnalysis:
 
         self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
 
-        self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, 100)
+        num_simulators = int(config['behaviour']['num_simulators'])
+
+        self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, num_simulators)
 
     def analyse(self):
         # logger.debug(self.dirs)
@@ -92,12 +96,25 @@ class SimulationAnalysis:
             sim_index += 1
         return time_prices_dict
 
-    @staticmethod
-    def calculate_confidences(time_prices_dict, level: float):
+    @classmethod
+    def calculate_confidences(cls, time_prices_dict, level: float):
         time_confidence_dict = {}
+        num_nans = {}
+        low_high = {}
         for time_in_seconds, prices in time_prices_dict.items():
             filt_prices = list(filter(lambda p: not math.isnan(p), prices))
+            low_high[time_in_seconds] = (min(filt_prices), max(filt_prices))
+            num_nans[time_in_seconds] = len(prices) - len(filt_prices)
             interval = st.t.interval(level, len(filt_prices) - 1, loc=np.mean(filt_prices), scale=st.sem(filt_prices))
             time_confidence_dict[time_in_seconds] = interval
+
+        for key in num_nans:
+            cls.logger.info(str(key) + " has " + str(num_nans[key]) + " NaNs")
+
+        for key, lh in low_high.items():
+            cls.logger.info(str(key) + " low, high: " + str(lh))
+
+        for key, intervals in time_confidence_dict.items():
+            cls.logger.info(str(key) + " has confidence width: " + str(abs(intervals[0] - intervals[1])))
 
         return time_confidence_dict
