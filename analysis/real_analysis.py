@@ -12,6 +12,8 @@ from distribution_fitter import DistributionFitter
 from graph_creator import GraphCreator
 from stats import Statistics
 
+import pebble
+
 
 class RealAnalysis:
     def __init__(self, orders_df: dd, trades_df: dd, cancels_df: dd, data_description: str):
@@ -38,58 +40,58 @@ class RealAnalysis:
         distributions = {}
         ratios = {}
 
-        pool = Pool(processes=6)
+        with pebble.ProcessPool() as pool:
+            # Find distributions using different procs
+            relative_order_price_distributions = pool.schedule(DataTransformer.price_distributions,
+                                                               (self.trades_df, self.orders_df,),
+                                                               dict(relative=True))
 
-        # Find distributions using different procs
-        relative_order_price_distributions = pool.apply_async(DataTransformer.price_distributions,
-                                                              (self.trades_df, self.orders_df,), dict(relative=True))
+            # Buy/sell Price
+            order_price_distributions = pool.schedule(DataTransformer.price_distributions,
+                                                      (self.trades_df, self.orders_df,), dict(relative=False))
 
-        # Buy/sell Price
-        order_price_distributions = pool.apply_async(DataTransformer.price_distributions,
-                                                     (self.trades_df, self.orders_df,), dict(relative=False))
+            # Buy/sell price Cancellation
+            relative_cancel_price_distributions = pool.schedule(DataTransformer.price_distributions,
+                                                                (self.trades_df, self.cancels_df,))
 
-        # Buy/sell price Cancellation
-        relative_cancel_price_distributions = pool.apply_async(DataTransformer.price_distributions,
-                                                               (self.trades_df, self.cancels_df,))
+            # Limit/ Market Order Size
+            limit_orders = DataSplitter.get_limit_orders(self.orders_df)
+            limit_size = pool.schedule(DistributionFitter.best_fit_distribution,
+                                       (limit_orders['size'],))
 
-        # Limit/ Market Order Size
-        limit_orders = DataSplitter.get_limit_orders(self.orders_df)
-        limit_size = pool.apply_async(DistributionFitter.best_fit_distribution,
-                                      (limit_orders['size'],))
+            market_orders = DataSplitter.get_market_orders(self.orders_df)
+            market_size = pool.schedule(DistributionFitter.best_fit_distribution,
+                                        (market_orders['size'],))
 
-        market_orders = DataSplitter.get_market_orders(self.orders_df)
-        market_size = pool.apply_async(DistributionFitter.best_fit_distribution,
-                                       (market_orders['size'],))
+            intervals = pool.schedule(DataTransformer.intervals_distribution, (self.orders_df,))
 
-        intervals = pool.apply_async(DataTransformer.intervals_distribution, (self.orders_df,))
+            ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
+            ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
+            ratios["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
+            ratios['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(self.orders_df)
 
-        ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(self.orders_df)
-        ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(self.cancels_df)
-        ratios["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(self.orders_df)
-        ratios['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(self.orders_df)
+            params["distributions"] = distributions
+            params['ratios'] = ratios
 
-        params["distributions"] = distributions
-        params['ratios'] = ratios
+            # Buy/sell Price relative
+            distributions["buy_price_relative"] = relative_order_price_distributions.result()["buy"][1]
+            distributions["sell_price_relative"] = relative_order_price_distributions.result()["sell"][1]
 
-        # Buy/sell Price relative
-        distributions["buy_price_relative"] = relative_order_price_distributions.get()["buy"][1]
-        distributions["sell_price_relative"] = relative_order_price_distributions.get()["sell"][1]
+            distributions["buy_price"] = order_price_distributions.result()["buy"][1]
+            distributions["sell_price"] = order_price_distributions.result()["sell"][1]
 
-        distributions["buy_price"] = order_price_distributions.get()["buy"][1]
-        distributions["sell_price"] = order_price_distributions.get()["sell"][1]
+            distributions["buy_cancel_price"] = relative_cancel_price_distributions.result()["buy"][1]
+            distributions["sell_cancel_price"] = relative_cancel_price_distributions.result()["sell"][1]
 
-        distributions["buy_cancel_price"] = relative_cancel_price_distributions.get()["buy"][1]
-        distributions["sell_cancel_price"] = relative_cancel_price_distributions.get()["sell"][1]
+            limit_size_best_fit, limit_size_best_fit_params = limit_size.result()
+            _, distributions["limit_size"] = DistributionFitter.get_distribution_string(limit_size_best_fit,
+                                                                                        limit_size_best_fit_params)
 
-        limit_size_best_fit, limit_size_best_fit_params = limit_size.get()
-        _, distributions["limit_size"] = DistributionFitter.get_distribution_string(limit_size_best_fit,
-                                                                                    limit_size_best_fit_params)
+            market_size_best_fit, market_size_best_fit_params = market_size.result()
+            _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
+                                                                                         market_size_best_fit_params)
 
-        market_size_best_fit, market_size_best_fit_params = market_size.get()
-        _, distributions["market_size"] = DistributionFitter.get_distribution_string(market_size_best_fit,
-                                                                                     market_size_best_fit_params)
-
-        _, distributions["interval"] = intervals.get()
+            _, distributions["interval"] = intervals.result()
 
         return params
 

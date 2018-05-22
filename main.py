@@ -2,11 +2,8 @@ import argparse
 import configparser
 import datetime
 import logging
-import multiprocessing
 import pathlib
 import time
-from multiprocessing import Process
-from multiprocessing.pool import Pool
 
 import dask.dataframe as dd
 
@@ -17,6 +14,10 @@ from analysis.simulation_analysis import SimulationAnalysis
 from data_loader import DataLoader
 from data_splitter import DataSplitter
 from orderbook import OrderBook
+
+from operator import itemgetter
+
+from pympler import tracker
 
 
 def get_all_data(st: datetime, config):
@@ -90,11 +91,9 @@ def multi_combined_mode(st: datetime.datetime = None):
     all_data_st = take_secs(st, ob_w)
     all_data_et = add_secs(st, (num_predictions - 1) * interval)
 
+    mem = tracker.SummaryTracker()
+
     all_data = DataLoader.load_split_data(real_root, all_data_st, all_data_et, product)
-
-    validation_process: multiprocessing.Process = None
-
-    pool = Pool(1)
 
     for i in range(0, num_predictions):
         logger.info("Iteration " + str(i))
@@ -132,7 +131,8 @@ def multi_combined_mode(st: datetime.datetime = None):
             # validation_process.join()
         except Exception as exception:
             logger.error("Combined failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
-
+        finally:
+            print(sorted(mem.create_summary(), reverse=True, key=itemgetter(2))[:10])
 
 
 def real_mode(st: datetime.datetime = None):
