@@ -64,6 +64,9 @@ def combined_mode(st: datetime.datetime = None):
 
     if run_simulation:
         combined_analysis.run_simulation()
+        future = combined_analysis.validate_analyses(prog_start)
+        # Block until validation is done
+        future.result()
         # if graphs:
         #     combined_analysis.print_stat_comparison()
         #     combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
@@ -125,7 +128,7 @@ def multi_combined_mode(st: datetime.datetime = None):
             combined_analysis.run_simulation()
 
             logger.info("Starting validation in other proc")
-            combined_analysis.validate_analyses()
+            combined_analysis.validate_analyses(prog_start)
             logger.info("Validation started")
 
             # Check that previous validation has ended
@@ -211,8 +214,9 @@ if __name__ == "__main__":
     config.read(args.config)
 
     mode = config['behaviour']['mode']
-
     root_path = config['full_paths']['root']
+
+    prog_start = datetime.datetime.now()
 
     # Ensure all paths exist
     for path_key in config['part_paths']:

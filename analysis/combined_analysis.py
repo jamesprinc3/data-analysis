@@ -161,27 +161,29 @@ class CombinedAnalysis:
             self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
 
     @concurrent.process(timeout=None)
-    def validate_analyses(self):
+    def validate_analyses(self, prog_start: datetime.datetime):
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         validation_data = self.get_validation_data(sim_analysis)
 
-        correlation_file_path = self.correlation_root + "corr.csv"
+        correlation_file_path = self.correlation_root + prog_start.isoformat() + ".csv"
         self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
         self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
 
     def append_final_prices(self, dst, sim_means, real_prices):
+        start_price = real_prices.dropna().iloc[0]
+
         last_real_price = real_prices.dropna().iloc[-1]
         last_sim_price = sim_means[-1]
 
         if not os.path.isfile(dst):
             with open(dst, 'w', newline='') as csvfile:
-                fieldnames = ['start_time', 'last_real_price', 'last_sim_price']
+                fieldnames = ['start_time', 'start_price', 'last_real_price', 'last_sim_price']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
 
         with open(dst, 'a', newline='') as fd:
-            row = ",".join([self.sim_st.isoformat(), str(last_real_price), str(last_sim_price)]) + "\n"
+            row = ",".join([self.sim_st.isoformat(), str(start_price), str(last_real_price), str(last_sim_price)]) + "\n"
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):

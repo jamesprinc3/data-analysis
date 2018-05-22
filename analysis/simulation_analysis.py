@@ -1,6 +1,9 @@
+import csv
 import datetime
 import logging
 import math
+import os
+import pathlib
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -22,8 +25,15 @@ class SimulationAnalysis:
 
         root_path = config['full_paths']['root']
         self.sim_root = root_path + config['part_paths']['sim_root'] \
-                        + sim_st.date().isoformat() \
-                        + "/" + sim_st.time().isoformat() + "/"
+                        + sim_st.date().isoformat() + "/" \
+                        + sim_st.time().isoformat() + "/"
+
+        confidence_dir = root_path + config['part_paths']['confidence_output_root'] \
+                             + sim_st.date().isoformat() + "/"
+
+        pathlib.Path(confidence_dir).mkdir(parents=True, exist_ok=True)
+        self.confidence_path = confidence_dir + sim_st.time().isoformat() + ".dump"
+
         self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
 
         self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, 100)
@@ -51,11 +61,20 @@ class SimulationAnalysis:
 
         plt.show()
 
+    def dump_confidence_data(self, dst, time_prices_dict: dict, time_confidence_dict: dict):
+        self.logger.info("Dumping confidence data to " + dst)
+        with open(dst, 'w', newline='\n') as fd:
+            fd.write(str(time_prices_dict))
+            fd.write(str(time_confidence_dict))
+
+        self.logger.info("Confidence data dumped to: " + dst)
+
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
         time_prices_dict = self.extract_prices_at_times(self.all_sims, seconds_list)
-        self.logger.debug(time_prices_dict)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
+
+        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
 
         return time_confidence_dict
 
@@ -82,6 +101,3 @@ class SimulationAnalysis:
             time_confidence_dict[time_in_seconds] = interval
 
         return time_confidence_dict
-
-
-
