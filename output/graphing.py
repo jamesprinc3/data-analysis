@@ -1,8 +1,9 @@
 import logging
 
 import dask.dataframe as dd
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
 
 from data.data_splitter import DataSplitter
 from data.data_transformer import DataTransformer
@@ -13,6 +14,9 @@ from distribution_fitter import DistributionFitter
 class Graphing:
     def __init__(self, config, data_desc: str):
         self.config = config
+
+        if config.graph_mode == "save":
+            matplotlib.use('PS')
 
         self.data_description = data_desc
         self.logger = logging.getLogger()

@@ -160,9 +160,6 @@ if __name__ == "__main__":
     conf.read(args.config)
     config = Config(conf)
 
-    if config.graph_mode == "save":
-        matplotlib.use('PS')
-
     prog_start = datetime.datetime.now()
 
     # Ensure all paths exist
