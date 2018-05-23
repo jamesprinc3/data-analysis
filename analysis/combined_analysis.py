@@ -14,13 +14,16 @@ import numpy as np
 import pathlib
 
 from analysis.real_analysis import RealAnalysis
+from analysis.sample import generate_order_params
 from analysis.simulation_analysis import SimulationAnalysis
+from config import Config
 from data_loader import DataLoader
 from data_splitter import DataSplitter
 from data_utils import DataUtils
 from orderbook import OrderBook
 from sim_config import SimConfig
 from stats import Statistics
+from writer import Writer
 
 
 class CombinedAnalysis:
@@ -28,55 +31,24 @@ class CombinedAnalysis:
         self.logger = logging.getLogger()
 
         self.config = config
-        root_path = config['full_paths']['root']
 
-        self.real_root = root_path + config['part_paths']['real_root']
-        self.sim_root = root_path + config['part_paths']['sim_root'] \
-                        + sim_st.date().isoformat() \
-                        + "/" + sim_st.time().isoformat() + "/"
-        self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
+        self.sim_root = self.config.sim_root + sim_st.date().isoformat() + "/" + sim_st.time().isoformat() + "/"
 
-        self.graphs_root = root_path + config['part_paths']['graphs_output_root']
-        self.params_path = root_path + config['part_paths']['params_output_root'] \
-                           + sim_st.date().isoformat() + "/"
+        self.params_path = self.config.params_path + sim_st.date().isoformat() + "/"
         pathlib.Path(self.params_path).mkdir(parents=True, exist_ok=True)
 
-        self.orderbook_root = root_path + config['part_paths']['orderbook_output_root']
-        self.correlation_root = root_path + config['part_paths']['correlation_output_root']
+        sim_logs_dir = self.config.sim_logs_root + sim_st.date().isoformat() + "/"
 
-        self.sim_config_path = root_path + config['part_paths']['sim_config_path']
-        self.jar_path = root_path + config['part_paths']['jar_path']
+        pathlib.Path(sim_logs_dir).mkdir(parents=True, exist_ok=True)
 
-        sim_logs_root = root_path + config['part_paths']['sim_logs'] \
-                        + sim_st.date().isoformat() + "/"
+        self.sim_logs_path = sim_logs_dir + sim_st.time().isoformat() + ".log"
 
-        pathlib.Path(sim_logs_root).mkdir(parents=True, exist_ok=True)
-
-        self.sim_logs_path = sim_logs_root + sim_st.time().isoformat() + ".log"
-
-        self.sampling_window = int(config['window']['sampling'])
-        self.simulation_window = int(config['window']['simulation'])
-        self.orderbook_window = int(config['window']['orderbook'])
-
-        self.product = config['data']['product']
         self.sim_st = sim_st
 
-        self.mode = config['behaviour']['mode']
-        self.show_graphs = config['behaviour'].getboolean('show_graphs')
-        self.save_graphs = config['graphs']['mode'] == "save"
-        self.fit_distributions = config['behaviour'].getboolean('fit_distributions')
-        self.use_cached_params = config['behaviour'].getboolean('use_cached_params')
-        self.sim_timeout = int(config['behaviour']['sim_timeout'])
-        self.num_simulators = int(config['behaviour']['num_simulators'])
-        self.num_traders = int(config['behaviour']['num_traders'])
-
-        self.ywindow = int(config['graphs']['ywindow'])
-        self.xinterval = int(config['graphs']['xinterval'])
-
-        self.sampling_window_start_time = sim_st - timedelta(seconds=self.sampling_window)
+        self.sampling_window_start_time = sim_st - timedelta(seconds=self.config.sampling_window)
         self.sampling_window_end_time = sim_st
 
-        self.orderbook_window_start_time = sim_st - datetime.timedelta(seconds=self.orderbook_window)
+        self.orderbook_window_start_time = sim_st - datetime.timedelta(seconds=self.config.orderbook_window)
         self.orderbook_window_end_time = sim_st
 
         self.all_sampling_data = all_sampling_data
@@ -86,27 +58,27 @@ class CombinedAnalysis:
     def run_simulation(self):
         params_path = self.params_path  \
                     + self.sim_st.time().isoformat() + ".json"
-        if self.use_cached_params and os.path.isfile(params_path):
+        if self.config.use_cached_params and os.path.isfile(params_path):
             self.logger.info("Params file exists, therefore we're using it! " + params_path)
         else:
             self.logger.info("Not using params cache" + "\nGenerating params...")
             # Get parameters
             orders_df, trades_df, cancels_df = self.all_sampling_data
             real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
-            params = real_analysis.generate_order_params()
+            params = generate_order_params(real_analysis.trades_df, real_analysis.orders_df, real_analysis.cancels_df)
 
             # Save params (that can be reused!)
-            real_analysis.json_to_file(params, params_path)
+            Writer.json_to_file(params, params_path)
             self.logger.info("Permanent parameters saved to: " + params_path)
 
         # Get orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
-        closest_state_file_path = OrderBook.locate_closest_ob_state(self.orderbook_input_root, self.sim_st)
+        closest_state_file_path = OrderBook.locate_closest_ob_state(self.config.orderbook_input_root, self.sim_st)
         ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
         ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
 
         # Save orderbook
-        orderbook_path = self.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
+        orderbook_path = self.config.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(ob_final, orderbook_path)
         self.logger.info("Orderbook saved to: " + orderbook_path)
 
@@ -119,9 +91,9 @@ class CombinedAnalysis:
         },
 
             'execution': {
-                'numSimulations': self.num_simulators,
-                'simulationSeconds': self.simulation_window,
-                'numTraders': self.num_traders,
+                'numSimulations': self.config.num_simulators,
+                'simulationSeconds': self.config.simulation_window,
+                'numTraders': self.config.num_traders,
                 'parallel': True,
                 'logLevel': "INFO"
             },
@@ -131,14 +103,14 @@ class CombinedAnalysis:
             }}
         sim_config_string = SimConfig.generate_config_string(sim_config)
 
-        f = open(self.sim_config_path, 'w')
+        f = open(self.config.sim_config_path, 'w')
         f.write(sim_config_string)
         f.close()
 
-        self.logger.info("Wrote sim config to: " + self.sim_config_path)
+        self.logger.info("Wrote sim config to: " + self.config.sim_config_path)
 
         # Start simulation
-        bash_command = "java -jar " + self.jar_path + " " + self.sim_config_path
+        bash_command = "java -jar " + self.config.jar_path + " " + self.config.sim_config_path
 
         self.logger.info("Running simulations")
 
@@ -147,7 +119,7 @@ class CombinedAnalysis:
 
         try:
             sim_process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
-            output, error = sim_process.communicate(timeout=self.sim_timeout)
+            output, error = sim_process.communicate(timeout=self.config.sim_timeout)
 
             self.logger.info("Simulations complete")
 
@@ -166,7 +138,7 @@ class CombinedAnalysis:
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         validation_data = self.get_validation_data(sim_analysis)
 
-        correlation_file_path = self.correlation_root + prog_start.isoformat() + ".csv"
+        correlation_file_path = self.config.correlation_root + prog_start.isoformat() + ".csv"
         self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
         self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
 
@@ -188,7 +160,9 @@ class CombinedAnalysis:
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
-        times = list(range(self.xinterval, self.simulation_window + self.xinterval, self.xinterval))
+        times = list(range(self.config.xinterval,
+                           self.config.simulation_window + self.config.xinterval,
+                           self.config.xinterval))
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         self.logger.info(confidence_intervals)
@@ -212,29 +186,31 @@ class CombinedAnalysis:
                                                 color_mean='k',
                                                 color_shading='k')
 
-        if self.save_graphs:
-            plot_root = self.graphs_root + self.sim_st.date().isoformat()
+        if self.config.save_graphs:
+            plot_root = self.config.graphs_root + self.sim_st.date().isoformat()
             # Ensure directory exists
             pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
 
             # Save plot
-            plot_path = plot_root \
-                        + "/" + self.sim_st.time().isoformat() \
-                        + "-sample-" + str(self.sampling_window) \
-                        + "-sim_window-" + str(self.simulation_window) \
-                        + "-num_sims-" + str(self.num_simulators) \
-                        + ".png"
+            plot_path = plot_root + self.__get_plot_title() + ".png"
             plt.savefig(plot_path, dpi=600, transparent=True)
             self.logger.info("Saved plot to: " + plot_path)
 
-        if self.show_graphs:
+        if self.config.show_graphs:
             plt.show()
 
         plt.close()
 
+    def __get_plot_title(self):
+        plot_path = self.sim_st.time().isoformat() \
+                    + "-sample-" + str(self.config.sampling_window) \
+                    + "-sim_window-" + str(self.config.simulation_window) \
+                    + "-num_sims-" + str(self.config.num_simulators)
+        return plot_path
+
     def print_stat_comparison(self):
-        real_orders, _, _ = DataLoader.load_split_data(self.real_root, self.sampling_window_start_time,
-                                                       self.sampling_window_end_time, self.product)
+        real_orders, _, _ = DataLoader.load_split_data(self.config.real_root, self.sampling_window_start_time,
+                                                       self.sampling_window_end_time, self.config.product)
         sim_orders = self.sim_analysis.all_sims[0][0].compute()
 
         real_stats = Statistics.get_order_stats(real_orders)
@@ -252,13 +228,10 @@ class CombinedAnalysis:
                                            color_shading=None):
         # Set bounds and make title (+ for axes)
         plt.figure(figsize=(12, 8))
-        ymin = real_prices.iloc[0] - (self.ywindow / 2)
-        ymax = real_prices.iloc[0] + (self.ywindow / 2)
+        ymin = real_prices.iloc[0] - (self.config.ywindow / 2)
+        ymax = real_prices.iloc[0] + (self.config.ywindow / 2)
         plt.ylim(ymin, ymax)
-        plt.title(self.product + " at " + self.sim_st.isoformat()
-                  + " sampling_window=" + str(self.sampling_window)
-                  + " simulation_window=" + str(self.simulation_window)
-                  + " num_simulators=" + str(self.num_simulators))
+        plt.title(self.config.product + " at " + self.__get_plot_title())
         plt.xlabel("Time (seconds)")
         plt.ylabel("Price ($)")
 
@@ -267,15 +240,13 @@ class CombinedAnalysis:
                          label="Simulated 95% Confidence Interval")
 
         # plot the mean on top
-        plt.plot(times, mean, color_mean,
-                 label="Simulated Mean")
-        plt.plot(real_times, real_prices, 'r+',
-                 label="Real Trades")
+        plt.plot(times, mean, color_mean, label="Simulated Mean")
+        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         plt.legend(loc='upper right')
 
     def __fetch_real_data(self):
-        df = DataLoader().load_feed(self.real_root, self.sim_st,
-                                    self.sim_st + timedelta(seconds=self.simulation_window), self.product)
+        df = DataLoader().load_feed(self.config.real_root, self.sim_st,
+                                    self.sim_st + timedelta(seconds=self.config.simulation_window), self.config.product)
         # [['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
 

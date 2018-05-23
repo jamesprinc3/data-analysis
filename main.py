@@ -4,66 +4,51 @@ import datetime
 import logging
 import pathlib
 import time
-import matplotlib
+from logging.config import fileConfig
+from operator import itemgetter
 
 import dask.dataframe as dd
-
-from logging.config import fileConfig
-
-import pebble
+import matplotlib
+from pympler import tracker
 
 from analysis.combined_analysis import CombinedAnalysis
 from analysis.real_analysis import RealAnalysis
+from analysis.sample import generate_order_params
 from analysis.simulation_analysis import SimulationAnalysis
+from config import Config
 from data_loader import DataLoader
 from data_splitter import DataSplitter
 from orderbook import OrderBook
-
-from operator import itemgetter
-
-from pympler import tracker
+from writer import Writer
 
 
 def get_all_data(st: datetime, config):
-    root = config['full_paths']['root']
-
-    real_root = root + config['part_paths']['real_root']
-    product = config['data']['product']
-
-    ob_w = int(config['window']['orderbook'])
-    sam_w = int(config['window']['sampling'])
-    sim_w = int(config['window']['simulation'])
-
     # Get all data which we will use to reconstruct the order book
-    all_ob_start_time = st - datetime.timedelta(seconds=ob_w)
+    all_ob_start_time = st - datetime.timedelta(seconds=config.orderbook_window)
     all_ob_end_time = st
-    all_ob_data = DataLoader().load_split_data(real_root, all_ob_start_time, all_ob_end_time, product)
+    all_ob_data = DataLoader().load_split_data(config.real_root, all_ob_start_time, all_ob_end_time, config.product)
 
     # Assume orderbook_window > sampling_window, and therefore filter already loaded ob data
-    all_sample_start_time = st - datetime.timedelta(seconds=sam_w)
+    all_sample_start_time = st - datetime.timedelta(seconds=config.sampling_window)
     all_sample_end_time = st
     all_sampling_data = map(lambda x: DataSplitter.get_between(x, all_sample_start_time, all_sample_end_time),
                             all_ob_data)
 
     # Get future data
     all_future_data_start_time = st
-    all_future_data_end_time = st + datetime.timedelta(seconds=sim_w)
-    all_future_data = DataLoader().load_split_data(real_root, all_future_data_start_time, all_future_data_end_time,
-                                                   product)
+    all_future_data_end_time = st + datetime.timedelta(seconds=config.sampling_window)
+    all_future_data = DataLoader().load_split_data(config.real_root, all_future_data_start_time,
+                                                   all_future_data_end_time, config.product)
 
     return all_ob_data, all_sampling_data, all_future_data
 
 
 def combined_mode(st: datetime.datetime = None):
-    if not st:
-        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
-    run_simulation = config['behaviour'].getboolean('run_simulation')
-
     all_ob_data, all_sampling_data, all_future_data = get_all_data(st, config)
 
     combined_analysis = CombinedAnalysis(config, st, all_ob_data, all_sampling_data, all_future_data)
 
-    if run_simulation:
+    if config.run_simulation:
         combined_analysis.run_simulation()
         future = combined_analysis.validate_analyses(prog_start)
         # Block until validation is done
@@ -82,35 +67,22 @@ def take_secs(dt: datetime, secs: int):
 
 
 def multi_combined_mode(st: datetime.datetime = None):
-    if not st:
-        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
-
-    real_root = root_path + config['part_paths']['real_root']
-    product = config['data']['product']
-
-    ob_w = int(config['window']['orderbook'])
-    sam_w = int(config['window']['sampling'])
-    sim_w = int(config['window']['simulation'])
-
-    num_predictions = int(config['data']['num_predictions'])
-    interval = int(config['data']['interval'])
-
-    all_data_st = take_secs(st, ob_w)
-    all_data_et = add_secs(st, (num_predictions - 1) * interval)
+    all_data_st = take_secs(st, config.orderbook_window)
+    all_data_et = add_secs(st, (config.num_predictions - 1) * config.interval)
 
     mem = tracker.SummaryTracker()
 
-    all_data = DataLoader.load_split_data(real_root, all_data_st, all_data_et, product)
+    all_data = DataLoader.load_split_data(config.real_root, all_data_st, all_data_et, config.product)
 
-    for i in range(0, num_predictions):
+    for i in range(0, config.num_predictions):
         logger.info("Iteration " + str(i))
-        sim_st = add_secs(st, interval * i)
-        sim_et = add_secs(sim_st, sim_w)
+        sim_st = add_secs(st, config.interval * i)
+        sim_et = add_secs(sim_st, config.simulation_window)
 
-        ob_st = take_secs(sim_st, ob_w)
+        ob_st = take_secs(sim_st, config.orderbook_window)
         ob_et = sim_st
 
-        sam_st = take_secs(sim_st, sam_w)
+        sam_st = take_secs(sim_st, config.sampling_window)
         sam_et = sim_st
 
         try:
@@ -150,30 +122,20 @@ def real_mode(st: datetime.datetime = None):
     if not st:
         st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
 
-    real_root = config['paths']['real_root']
-    params_path = config['paths']['params_path']
-    product = config['data']['product']
-    sampling_window = int(config['window']['sampling'])
-    fit_distributions = config['behaviour']['fit_distributions']
-    graphs_root = config['paths']['graphs_root']
-
-    sampling_window_start_time = st - datetime.timedelta(seconds=sampling_window)
+    sampling_window_start_time = st - datetime.timedelta(seconds=config.sampling_window)
     sampling_window_end_time = st
-    orders_df, trades_df, cancels_df = DataLoader.load_split_data(real_root, sampling_window_start_time,
-                                                                  sampling_window_end_time, product)
-    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + product)
+    orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, sampling_window_start_time,
+                                                                  sampling_window_end_time, config.product)
+    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + config.product)
 
-    if fit_distributions and params_path:
-        params = real_analysis.generate_order_params()
-        real_analysis.json_to_file(params, params_path)
-    if graphs_root:
-        real_analysis.generate_graphs(graphs_root)
+    if config.fit_distributions and config.params_path:
+        params = generate_order_params(real_analysis.trades_df, real_analysis.orders_df, real_analysis.cancels_df)
+        Writer.json_to_file(params, config.params_path)
+    if config.graphs_root:
+        real_analysis.generate_graphs(config.graphs_root)
 
 
 def simulation_mode(st: datetime.datetime = None):
-    if not st:
-        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
-
     SimulationAnalysis(config, st).analyse()
 
 
@@ -211,38 +173,35 @@ if __name__ == "__main__":
                         help='start time for simulation (overrides parameter in .ini file)')
     args = parser.parse_args()
 
-    config = configparser.ConfigParser()
-    config.read(args.config)
+    conf = configparser.ConfigParser()
+    conf.read(args.config)
+    config = Config(conf)
 
-    mode = config['behaviour']['mode']
-    root_path = config['full_paths']['root']
-    graph_mode = config['graphs']['mode']
-
-    if graph_mode == "save":
+    if config.graph_mode == "save":
         matplotlib.use('PS')
 
     prog_start = datetime.datetime.now()
 
     # Ensure all paths exist
-    for path_key in config['part_paths']:
+    for path_key in conf['part_paths']:
         try:
-            if pathlib.Path(root_path + config['part_paths'][path_key]).mkdir(parents=True, exist_ok=True):
+            if pathlib.Path(config.root_path + conf['part_paths'][path_key]).mkdir(parents=True, exist_ok=True):
                 raise FileNotFoundError
         except FileExistsError:
             pass
         except FileNotFoundError:
-            logger.info(config['part_paths'][path_key] + " does not exist")
-        logger.info(config['part_paths'][path_key] + " exists")
+            logger.info(conf['part_paths'][path_key] + " does not exist")
+        logger.info(conf['part_paths'][path_key] + " exists")
 
-    if mode == "combined":
-        combined_mode()
-    elif mode == "multi-combined":
-        multi_combined_mode()
-    elif mode == "real":
+    if config.mode == "combined":
+        combined_mode(config.start_time)
+    elif config.mode == "multi-combined":
+        multi_combined_mode(config.start_time)
+    elif config.mode == "real":
         real_mode()
-    elif mode == "simulation":
+    elif config.mode == "simulation":
         simulation_mode()
-    elif mode == "orderbook":
+    elif config.mode == "orderbook":
         orderbook_mode()
 
     logger.info("Program took " + str(time.time() - t0) + " seconds")

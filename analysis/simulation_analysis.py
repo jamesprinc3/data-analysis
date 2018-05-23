@@ -25,23 +25,19 @@ class SimulationAnalysis:
         """
         self.logger = logging.getLogger()
 
-        root_path = config['full_paths']['root']
-        self.sim_root = root_path + config['part_paths']['sim_root'] \
+        self.sim_root = config.sim_root \
                         + sim_st.date().isoformat() + "/" \
                         + sim_st.time().isoformat() + "/"
 
-        confidence_dir = root_path + config['part_paths']['confidence_output_root'] \
+        confidence_dir = config.confidence_root \
                          + sim_st.date().isoformat() + "/"
 
         pathlib.Path(confidence_dir).mkdir(parents=True, exist_ok=True)
         self.confidence_path = confidence_dir + sim_st.time().isoformat() + ".dump"
 
-        self.graph_creator = GraphCreator(config, "Simulation " + config['data']['product'])
-        self.ywindow = int(config['graphs']['ywindow'])
+        self.graph_creator = GraphCreator(config, "Simulation " + config.product)
 
-        num_simulators = int(config['behaviour']['num_simulators'])
-
-        self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, num_simulators)
+        self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, config.num_simulators)
 
     def analyse(self):
         # logger.debug(self.dirs)

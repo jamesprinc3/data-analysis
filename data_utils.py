@@ -10,6 +10,10 @@ class DataUtils:
         return pd.to_datetime(s, unit=unit).value
 
     @staticmethod
+    def secs_to_nanos(secs) -> int:
+        return secs * 10 ** 9
+
+    @staticmethod
     def keep_n_std_dev(data: pd.Series, n: int) -> pd.Series:
         return data[~((data - data.mean()).abs() > n * data.std())]
 
@@ -30,7 +34,6 @@ class DataUtils:
     def get_first_non_nan(s: pd.Series):
         return s.dropna().iloc[0]
 
-
     @staticmethod
     def get_last_price_before(trades_df: dd, seconds: int):
 
@@ -43,8 +46,7 @@ class DataUtils:
         trades_before = local_df[local_df['time'] < seconds]
         return trades_before['price'].iloc[-1]
 
-
-    def remove_tails(self, data: dd, std_devs: int, sample_size: int=10000):
+    def remove_tails(self, data: dd, std_devs: int, sample_size: int = 10000):
         data = DataUtils().keep_n_std_dev(data, std_devs)
         if len(data) > sample_size:
             data = data.sample(n=sample_size)
@@ -66,4 +68,3 @@ class DataUtils:
             axis=1)
 
         return joined
-

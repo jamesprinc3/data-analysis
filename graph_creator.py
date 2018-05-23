@@ -12,10 +12,10 @@ from distribution_fitter import DistributionFitter
 
 class GraphCreator:
     def __init__(self, config, data_desc: str):
+        self.config = config
+
         self.data_description = data_desc
         self.logger = logging.getLogger()
-
-        self.sim_w = int(config['window']['simulation'])
 
     def graph_interval(self, orders_df: dd):
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
@@ -107,7 +107,7 @@ class GraphCreator:
         ymin = mid - (ywindow / 2)
 
         plt.ylim(ymin, ymax)
-        plt.xlim(0, self.sim_w)
+        plt.xlim(0, self.config.simulation_window)
 
         plt.title(self.data_description + " " + data_desc + ' price')
 
