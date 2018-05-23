@@ -130,8 +130,8 @@ class Graphing:
         DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)
 
     # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
-    def __plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
-                                           color_shading=None):
+    def plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
+                                         color_shading=None):
         # Set bounds and make title (+ for axes)
         plt.figure(figsize=(12, 8))
         ymin = real_prices.iloc[0] - (self.config.ywindow / 2)

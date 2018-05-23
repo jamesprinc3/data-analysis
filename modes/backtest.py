@@ -8,7 +8,6 @@ from datetime import timedelta
 
 from pebble import concurrent
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
 
@@ -19,6 +18,7 @@ from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
 from data.data_utils import DataUtils
 from orderbook import OrderBook
+from output.graphing import Graphing
 from sim_config import SimConfig
 from stats import Statistics
 from output.writer import Writer
@@ -53,9 +53,19 @@ class Backtest:
         self.all_ob_data = all_ob_data
         self.all_future_data = all_future_data
 
+        self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
+
+        import matplotlib
+
+        matplotlib.use('PS')
+
+        import matplotlib.pyplot as plt
+
+        self.plt = plt
+
     def run_simulation(self):
-        params_path = self.params_path  \
-                    + self.sim_st.time().isoformat() + ".json"
+        params_path = self.params_path \
+                      + self.sim_st.time().isoformat() + ".json"
         if self.config.use_cached_params and os.path.isfile(params_path):
             self.logger.info("Params file exists, therefore we're using it! " + params_path)
         else:
@@ -154,7 +164,8 @@ class Backtest:
                 writer.writeheader()
 
         with open(dst, 'a', newline='') as fd:
-            row = ",".join([self.sim_st.isoformat(), str(start_price), str(last_real_price), str(last_sim_price)]) + "\n"
+            row = ",".join(
+                [self.sim_st.isoformat(), str(start_price), str(last_real_price), str(last_sim_price)]) + "\n"
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
@@ -179,14 +190,14 @@ class Backtest:
 
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
                                                               real_prices):
-        plt.title(self.config.product + " at " + self.__get_plot_title())
-        plt.xlabel("Time (seconds)")
-        plt.ylabel("Price ($)")
+        self.plt.title(self.config.product + " at " + self.__get_plot_title())
+        self.plt.xlabel("Time (seconds)")
+        self.plt.ylabel("Price ($)")
 
         # plot the data
-        self.__plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
-                                                color_mean='k',
-                                                color_shading='k')
+        self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
+                                                       color_mean='k',
+                                                       color_shading='k')
 
         if self.config.save_graphs:
             plot_root = self.config.graphs_root + self.sim_st.date().isoformat()
@@ -195,13 +206,13 @@ class Backtest:
 
             # Save plot
             plot_path = plot_root + self.__get_plot_title() + ".png"
-            plt.savefig(plot_path, dpi=600, transparent=True)
+            self.plt.savefig(plot_path, dpi=600, transparent=True)
             self.logger.info("Saved plot to: " + plot_path)
 
         if self.config.show_graphs:
-            plt.show()
+            self.plt.show()
 
-        plt.close()
+        self.plt.close()
 
     def __get_plot_title(self):
         plot_path = self.sim_st.time().isoformat() \
