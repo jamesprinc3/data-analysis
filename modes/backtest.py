@@ -55,7 +55,6 @@ class Backtest:
 
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
 
-
     def run_simulation(self):
         params_path = self.params_path \
                       + self.sim_st.time().isoformat() + ".json"
@@ -65,7 +64,6 @@ class Backtest:
             self.logger.info("Not using params cache" + "\nGenerating params...")
             # Get parameters
             orders_df, trades_df, cancels_df = self.all_sampling_data
-            real_analysis = RealAnalysis("Backtest BTC-USD")
             params = Sample.generate_order_params(trades_df, orders_df, cancels_df)
 
             # Save params (that can be reused!)
