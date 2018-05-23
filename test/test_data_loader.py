@@ -1,7 +1,6 @@
 import datetime
 from unittest import TestCase
-from data_loader import DataLoader
-from data_splitter import DataSplitter
+from data.data_loader import DataLoader
 
 import pandas as pd
 import numpy as np

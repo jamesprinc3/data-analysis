@@ -9,7 +9,7 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 
-from data_splitter import DataSplitter
+from data.data_splitter import DataSplitter
 
 
 class OrderBook:

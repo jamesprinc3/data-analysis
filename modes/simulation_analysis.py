@@ -1,8 +1,6 @@
-import csv
 import datetime
 import logging
 import math
-import os
 import pathlib
 from typing import List
 
@@ -10,10 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
 
-from data_loader import DataLoader
-from data_utils import DataUtils
-from graph_creator import GraphCreator
-from stats import Statistics
+from data.data_loader import DataLoader
+from data.data_utils import DataUtils
+from output.graphing import Graphing
 
 
 class SimulationAnalysis:
@@ -35,7 +32,7 @@ class SimulationAnalysis:
         pathlib.Path(confidence_dir).mkdir(parents=True, exist_ok=True)
         self.confidence_path = confidence_dir + sim_st.time().isoformat() + ".dump"
 
-        self.graph_creator = GraphCreator(config, "Simulation " + config.product)
+        self.graph_creator = Graphing(config, "Simulation " + config.product)
 
         self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, config.num_simulators)
 

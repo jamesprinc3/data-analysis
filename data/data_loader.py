@@ -6,7 +6,7 @@ import dask.dataframe as dd
 import pandas as pd
 from pandas.errors import EmptyDataError
 
-from data_splitter import DataSplitter
+from data.data_splitter import DataSplitter
 
 
 class DataLoader:

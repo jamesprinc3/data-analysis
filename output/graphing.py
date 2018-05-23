@@ -4,13 +4,13 @@ import dask.dataframe as dd
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from data_splitter import DataSplitter
-from data_transformer import DataTransformer
-from data_utils import DataUtils
+from data.data_splitter import DataSplitter
+from data.data_transformer import DataTransformer
+from data.data_utils import DataUtils
 from distribution_fitter import DistributionFitter
 
 
-class GraphCreator:
+class Graphing:
     def __init__(self, config, data_desc: str):
         self.config = config
 
@@ -42,26 +42,6 @@ class GraphCreator:
         self.graph_distribution(btc_usd_price_buy, self.data_description + ' buy side', 'Price ($)', bins=50)
         self.graph_distribution(btc_usd_price_sell, self.data_description + ' sell side', 'Price ($)', bins=50)
 
-    # TODO: REFACTOR (mostly replaced by data_utils.fuzzy() )
-    # def format_orders(self, orders: dd, price_over_time: dd):
-    #     orders['price'] = orders['price'].astype('float64')
-    #     orders['time'] = orders['time'].astype('datetime64[ns]')
-    #
-    #     price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
-    #
-    #     # logger.debug("orders\n")
-    #     # logger.debug(orders)
-    #     # logger.debug("price over time\n")
-    #     # logger.debug(price_over_time)
-    #
-    #     # B1 = orders.set_index('time').reindex(price_over_time.index, method='nearest').reset_index()
-    #     joined = orders.join(price_over_time, on='time').fillna(method='ffill')
-    #
-    #     joined['relative_price'] = joined.apply(lambda row: float(row['price']) - float(row['most_recent_trade_price']),
-    #                                             axis=1)
-    #
-    #     return joined
-
     # TODO: calculate price % difference (so that we can compare these distributions between currencies or points in time where the price is very different
     # TODO: make this use the mid price as calculated by what the order book actually looks like
     def graph_relative_price_distribution(self, trades_df: dd, other_df: dd, num_bins=100):
@@ -80,7 +60,8 @@ class GraphCreator:
         self.graph_distribution(sell_prices, self.data_description + ", Sell Side",
                                 "Price relative to most recent trade", bins=num_bins)
 
-    def __graph_price_time_set(self, df: dd, marker: str):
+    @staticmethod
+    def __graph_price_time_set(df: dd, marker: str):
         y = df['price'].astype('float64').fillna(method='ffill')
 
         times = df['time'].astype('datetime64[ns]').apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
@@ -118,29 +99,8 @@ class GraphCreator:
         cancels_df = DataSplitter.get_cancellations(feed_df)
         self.graph_relative_price_distribution(trades_df, cancels_df)
 
-        # price_over_time: dd = Statistics().get_price_over_time(feed_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
-        # price_over_time.index = price_over_time.index.astype('datetime64')
-        #
-        # cancels = Statistics.get_cancellations(feed_df)
-        #
-        # buy_cancels = Statistics().get_side("buy", cancels)
-        # buy_cancels = self.format_orders(buy_cancels, price_over_time)
-        # # Flip the distribution around so that we can actually fit it to something breeze can sample from
-        # buy_cancels['relative_price'] = buy_cancels['relative_price'].apply(lambda x: -x)
-        #
-        # sell_cancels = Statistics().get_side("sell", cancels)
-        # sell_cancels = self.format_orders(sell_cancels, price_over_time)
-        #
-        # self.get_distribution(buy_cancels['relative_price'], "BTC-USD Buy Side", "Relative price for order cancellations")
-        # self.get_distribution(sell_cancels['relative_price'], "BTC-USD Sell Side",
-        #                       "Relative price for order cancellations")
-
-        # cancels = self.format_orders(cancels, price_over_time)
-        #
-        # self.get_distribution(cancels['relative_price'], 'BTC-USD', "Relative price (combined)")
-
-    # PRE: assume that the incoming df is either all trades or all orders (not sure the data will make much sense
-    # otherwise
+    # PRE: assume that the incoming df is either all trades or all orders
+    # (not sure the data will make much sense otherwise)
     @staticmethod
     def graph_price_quantity(df: dd) -> None:
         prices = df['price'].astype('float64').tolist()
@@ -164,3 +124,21 @@ class GraphCreator:
         data = DataUtils().keep_n_std_dev(data, std_devs)
 
         DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)
+
+    # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
+    def __plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
+                                           color_shading=None):
+        # Set bounds and make title (+ for axes)
+        plt.figure(figsize=(12, 8))
+        ymin = real_prices.iloc[0] - (self.config.ywindow / 2)
+        ymax = real_prices.iloc[0] + (self.config.ywindow / 2)
+        plt.ylim(ymin, ymax)
+
+        # plot the shaded range of the confidence intervals
+        plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
+                         label="Simulated 95% Confidence Interval")
+
+        # plot the mean on top
+        plt.plot(times, mean, color_mean, label="Simulated Mean")
+        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
+        plt.legend(loc='upper right')

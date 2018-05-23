@@ -1,7 +1,7 @@
 import logging
 
-from data_splitter import DataSplitter
-from data_utils import DataUtils
+from data.data_splitter import DataSplitter
+from data.data_utils import DataUtils
 import dask.dataframe as dd
 
 from distribution_fitter import DistributionFitter

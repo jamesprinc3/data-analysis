@@ -6,27 +6,25 @@ import signal
 import subprocess
 from datetime import timedelta
 
-import matplotlib
 from pebble import concurrent
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
 
-from analysis.real_analysis import RealAnalysis
-from analysis.sample import generate_order_params
-from analysis.simulation_analysis import SimulationAnalysis
-from config import Config
-from data_loader import DataLoader
-from data_splitter import DataSplitter
-from data_utils import DataUtils
+from modes.real_analysis import RealAnalysis
+from modes.sample import Sample
+from modes.simulation_analysis import SimulationAnalysis
+from data.data_loader import DataLoader
+from data.data_splitter import DataSplitter
+from data.data_utils import DataUtils
 from orderbook import OrderBook
 from sim_config import SimConfig
 from stats import Statistics
-from writer import Writer
+from output.writer import Writer
 
 
-class CombinedAnalysis:
+class Backtest:
     def __init__(self, config, sim_st: datetime, all_ob_data, all_sampling_data, all_future_data):
         self.logger = logging.getLogger()
 
@@ -64,8 +62,8 @@ class CombinedAnalysis:
             self.logger.info("Not using params cache" + "\nGenerating params...")
             # Get parameters
             orders_df, trades_df, cancels_df = self.all_sampling_data
-            real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined BTC-USD")
-            params = generate_order_params(real_analysis.trades_df, real_analysis.orders_df, real_analysis.cancels_df)
+            real_analysis = RealAnalysis("Backtest BTC-USD")
+            params = Sample.generate_order_params(trades_df, orders_df, cancels_df)
 
             # Save params (that can be reused!)
             Writer.json_to_file(params, params_path)
@@ -181,6 +179,10 @@ class CombinedAnalysis:
 
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
                                                               real_prices):
+        plt.title(self.config.product + " at " + self.__get_plot_title())
+        plt.xlabel("Time (seconds)")
+        plt.ylabel("Price ($)")
+
         # plot the data
         self.__plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
                                                 color_mean='k',
@@ -222,27 +224,6 @@ class CombinedAnalysis:
             print_str += k + "\t\t\t\tReal: " + str(real_stats[k]) + "\t\t\tSim: " + str(sim_stats[k]) + "\n"
 
         print(print_str)
-
-    # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
-    def __plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
-                                           color_shading=None):
-        # Set bounds and make title (+ for axes)
-        plt.figure(figsize=(12, 8))
-        ymin = real_prices.iloc[0] - (self.config.ywindow / 2)
-        ymax = real_prices.iloc[0] + (self.config.ywindow / 2)
-        plt.ylim(ymin, ymax)
-        plt.title(self.config.product + " at " + self.__get_plot_title())
-        plt.xlabel("Time (seconds)")
-        plt.ylabel("Price ($)")
-
-        # plot the shaded range of the confidence intervals
-        plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
-                         label="Simulated 95% Confidence Interval")
-
-        # plot the mean on top
-        plt.plot(times, mean, color_mean, label="Simulated Mean")
-        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
-        plt.legend(loc='upper right')
 
     def __fetch_real_data(self):
         df = DataLoader().load_feed(self.config.real_root, self.sim_st,

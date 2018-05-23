@@ -1,10 +1,11 @@
 import datetime
 import pathlib
+from configparser import ConfigParser
 
 
 class Config:
 
-    def __init__(self, config: dict):
+    def __init__(self, config: ConfigParser):
         """Parse the config file and apply the correct typing, etc to it"""
 
         self.graph_mode = config['graphs']['mode']
@@ -46,7 +47,6 @@ class Config:
         self.num_simulators = int(config['behaviour']['num_simulators'])
         self.num_traders = int(config['behaviour']['num_traders'])
         self.run_simulation = config['behaviour'].getboolean('run_simulation')
-
 
         self.ywindow = int(config['graphs']['ywindow'])
         self.xinterval = int(config['graphs']['xinterval'])

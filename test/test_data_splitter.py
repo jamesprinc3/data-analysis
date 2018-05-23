@@ -1,5 +1,5 @@
 from unittest import TestCase
-from data_splitter import DataSplitter
+from data.data_splitter import DataSplitter
 
 import pandas as pd
 import datetime

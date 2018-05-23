@@ -2,7 +2,7 @@ import datetime
 
 import dask.dataframe as dd
 
-from data_utils import DataUtils
+from data.data_utils import DataUtils
 
 
 class DataSplitter:

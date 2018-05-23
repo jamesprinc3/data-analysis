@@ -2,7 +2,7 @@ import datetime
 import pandas as pd
 from unittest import TestCase
 
-from data_loader import DataLoader
+from data.data_loader import DataLoader
 from orderbook import OrderBook
 
 

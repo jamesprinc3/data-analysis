@@ -11,15 +11,14 @@ import dask.dataframe as dd
 import matplotlib
 from pympler import tracker
 
-from analysis.combined_analysis import CombinedAnalysis
-from analysis.real_analysis import RealAnalysis
-from analysis.sample import generate_order_params
-from analysis.simulation_analysis import SimulationAnalysis
+from modes.backtest import Backtest
+from modes.real_analysis import RealAnalysis
+from modes.simulation_analysis import SimulationAnalysis
 from config import Config
-from data_loader import DataLoader
-from data_splitter import DataSplitter
+from data.data_loader import DataLoader
+from data.data_splitter import DataSplitter
 from orderbook import OrderBook
-from writer import Writer
+from output.writer import Writer
 
 
 def get_all_data(st: datetime, config):
@@ -42,22 +41,6 @@ def get_all_data(st: datetime, config):
 
     return all_ob_data, all_sampling_data, all_future_data
 
-
-def combined_mode(st: datetime.datetime = None):
-    all_ob_data, all_sampling_data, all_future_data = get_all_data(st, config)
-
-    combined_analysis = CombinedAnalysis(config, st, all_ob_data, all_sampling_data, all_future_data)
-
-    if config.run_simulation:
-        combined_analysis.run_simulation()
-        future = combined_analysis.validate_analyses(prog_start)
-        # Block until validation is done
-        future.result()
-        # if graphs:
-        #     combined_analysis.print_stat_comparison()
-        #     combined_analysis.graph_real_prices_with_simulated_confidence_intervals()
-
-
 def add_secs(dt: datetime, secs: int):
     return dt + datetime.timedelta(seconds=secs)
 
@@ -66,7 +49,7 @@ def take_secs(dt: datetime, secs: int):
     return dt - datetime.timedelta(seconds=secs)
 
 
-def multi_combined_mode(st: datetime.datetime = None):
+def backtest_mode(st: datetime.datetime = None):
     all_data_st = take_secs(st, config.orderbook_window)
     all_data_et = add_secs(st, (config.num_predictions - 1) * config.interval)
 
@@ -96,7 +79,7 @@ def multi_combined_mode(st: datetime.datetime = None):
             all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
                                   all_data)
 
-            combined_analysis = CombinedAnalysis(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+            combined_analysis = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
             combined_analysis.run_simulation()
 
@@ -193,10 +176,8 @@ if __name__ == "__main__":
             logger.info(conf['part_paths'][path_key] + " does not exist")
         logger.info(conf['part_paths'][path_key] + " exists")
 
-    if config.mode == "combined":
-        combined_mode(config.start_time)
-    elif config.mode == "multi-combined":
-        multi_combined_mode(config.start_time)
+    if config.mode == "backtest":
+        backtest_mode(config.start_time)
     elif config.mode == "real":
         real_mode()
     elif config.mode == "simulation":
