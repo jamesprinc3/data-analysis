@@ -31,12 +31,13 @@ class SimulationAnalysis:
                         + sim_st.time().isoformat() + "/"
 
         confidence_dir = root_path + config['part_paths']['confidence_output_root'] \
-                             + sim_st.date().isoformat() + "/"
+                         + sim_st.date().isoformat() + "/"
 
         pathlib.Path(confidence_dir).mkdir(parents=True, exist_ok=True)
         self.confidence_path = confidence_dir + sim_st.time().isoformat() + ".dump"
 
-        self.graph_creator = GraphCreator("Simulation " + config['data']['product'])
+        self.graph_creator = GraphCreator(config, "Simulation " + config['data']['product'])
+        self.ywindow = int(config['graphs']['ywindow'])
 
         num_simulators = int(config['behaviour']['num_simulators'])
 
@@ -45,25 +46,26 @@ class SimulationAnalysis:
     def analyse(self):
         # logger.debug(self.dirs)
         # for directory in self.dirs:
-        orders_dd, trades_dd, cancels_dd = DataLoader().load_sim_data(self.sim_root)[0]
+        i = 0
+        for orders_dd, trades_dd, cancels_dd in self.all_sims:
+            orders_df = orders_dd.compute()
+            trades_df = trades_dd.compute()
+            # self.graph_creator.graph_order_sizes(orders_df)
+            # self.graph_creator.graph_price_quantity(orders_df)
+            mid = trades_df['price'].dropna().iloc[0]
+            self.graph_creator.graph_price_time(orders_df, "orders (sim #" + str(i) + ")", mid, self.ywindow)
+            # self.graph_creator.graph_time_delta(orders_df)
+            #
+            # self.graph_creator.graph_price_time(trades_df, "trades (sim #" + str(i) + ")")
+            #
+            # # self.graph_creator.graph_relative_price_distribution(trades_df, cancels_df, 20)
+            #
+            # self.graph_creator.graph_relative_price_distribution(trades_df, orders_df, 20)
+            # self.graph_creator.graph_interval(orders_df)
 
-        orders_df = orders_dd.compute()
-        # self.graph_creator.graph_order_sizes(orders_df)
-        # self.graph_creator.graph_price_quantity(orders_df)
-        self.graph_creator.graph_price_time(orders_df, "orders")
-        # self.graph_creator.graph_time_delta(orders_df)
-        #
-        trades_df = trades_dd.compute()
-        self.graph_creator.graph_price_time(trades_df, "trades")
-
-        # self.graph_creator.graph_relative_price_distribution(trades_df, cancels_df, 20)
-
-        self.graph_creator.graph_relative_price_distribution(trades_df, orders_df, 20)
-        self.graph_creator.graph_interval(orders_df)
-
-        # graphs.graph_price_quantity(trades_df)
-
-        plt.show()
+            # graphs.graph_price_quantity(trades_df)
+            plt.show()
+            i += 1
 
     def dump_confidence_data(self, dst, time_prices_dict: dict, time_confidence_dict: dict):
         self.logger.info("Dumping confidence data to " + dst)

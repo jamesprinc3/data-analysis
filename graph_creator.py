@@ -11,15 +11,18 @@ from distribution_fitter import DistributionFitter
 
 
 class GraphCreator:
-    def __init__(self, data_desc: str):
+    def __init__(self, config, data_desc: str):
         self.data_description = data_desc
         self.logger = logging.getLogger()
+
+        self.sim_w = int(config['window']['simulation'])
 
     def graph_interval(self, orders_df: dd):
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
         self.logger.debug(order_time_delta_df)
         cleaned_df = order_time_delta_df[order_time_delta_df != 0]
-        self.graph_distribution(cleaned_df, self.data_description + ' inter-order arrival times', 'inter order time (ms)', bins=100)
+        self.graph_distribution(cleaned_df, self.data_description + ' inter-order arrival times',
+                                'inter order time (ms)', bins=100)
 
     def graph_order_sizes(self, orders_df: dd):
         size_df = pd.Series(orders_df['size'].astype('float64').tolist())
@@ -62,7 +65,6 @@ class GraphCreator:
     # TODO: calculate price % difference (so that we can compare these distributions between currencies or points in time where the price is very different
     # TODO: make this use the mid price as calculated by what the order book actually looks like
     def graph_relative_price_distribution(self, trades_df: dd, other_df: dd, num_bins=100):
-
         buy_orders = DataSplitter.get_side("buy", other_df)
         sell_orders = DataSplitter.get_side("sell", other_df)
 
@@ -73,35 +75,48 @@ class GraphCreator:
         # Graphing
         plt.figure(figsize=(12, 8))
 
-        self.graph_distribution(buy_prices, self.data_description + ", Buy Side", "Price relative to most recent trade", bins=num_bins)
-        self.graph_distribution(sell_prices, self.data_description + ", Sell Side", "Price relative to most recent trade", bins=num_bins)
+        self.graph_distribution(buy_prices, self.data_description + ", Buy Side", "Price relative to most recent trade",
+                                bins=num_bins)
+        self.graph_distribution(sell_prices, self.data_description + ", Sell Side",
+                                "Price relative to most recent trade", bins=num_bins)
 
-    def graph_price_time(self, df: dd, data_desc: str):
-        #
+    def __graph_price_time_set(self, df: dd, marker: str):
         y = df['price'].astype('float64').fillna(method='ffill')
-        self.logger.debug(y)
-        self.logger.debug(df['time'].astype('datetime64[ns]'))
+
         times = df['time'].astype('datetime64[ns]').apply(lambda x: DataUtils.date_to_unix(x, 'ns'))
         start_time = times.min()
-        self.logger.debug("start_time " + str(start_time))
-        x = times.apply(lambda z: (z - start_time) / 1e6)
-        # logger.debug(x)
+        x = times.apply(lambda z: (z - start_time) / 1e9)
 
+        plt.plot(x, y, marker)
+
+    def graph_price_time(self, df: dd, data_desc: str, mid: int, ywindow: int):
+        #
+        print(df)
         plt.figure(figsize=(12, 8))
 
-        plt.plot(x, y, 'r+')
+        buy_df = DataSplitter.get_side("buy", df)
+        sell_df = DataSplitter.get_side("sell", df)
 
-        plt.xlabel('Time (ms)')
+        self.__graph_price_time_set(buy_df, 'r+')
+        self.__graph_price_time_set(sell_df, 'b+')
+
+        plt.xlabel('Time (s)')
         plt.ylabel('Price ($)')
-        # plt.ylim(7000, 10000)
+
+        ymax = mid + (ywindow / 2)
+        ymin = mid - (ywindow / 2)
+
+        plt.ylim(ymin, ymax)
+        plt.xlim(0, self.sim_w)
 
         plt.title(self.data_description + " " + data_desc + ' price')
+
+        return plt
 
     def graph_order_cancel_relative_price_distribution(self, feed_df):
         trades_df = DataSplitter.get_trades(feed_df)
         cancels_df = DataSplitter.get_cancellations(feed_df)
         self.graph_relative_price_distribution(trades_df, cancels_df)
-
 
         # price_over_time: dd = Statistics().get_price_over_time(feed_df).groupby(['time'])['most_recent_trade_price'].mean().to_frame()
         # price_over_time.index = price_over_time.index.astype('datetime64')

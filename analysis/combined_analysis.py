@@ -9,8 +9,6 @@ from datetime import timedelta
 import matplotlib
 from pebble import concurrent
 
-matplotlib.use('PS')
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
@@ -65,11 +63,12 @@ class CombinedAnalysis:
 
         self.mode = config['behaviour']['mode']
         self.show_graphs = config['behaviour'].getboolean('show_graphs')
-        self.save_graphs = config['behaviour'].getboolean('save_graphs')
+        self.save_graphs = config['graphs']['mode'] == "save"
         self.fit_distributions = config['behaviour'].getboolean('fit_distributions')
         self.use_cached_params = config['behaviour'].getboolean('use_cached_params')
         self.sim_timeout = int(config['behaviour']['sim_timeout'])
         self.num_simulators = int(config['behaviour']['num_simulators'])
+        self.num_traders = int(config['behaviour']['num_traders'])
 
         self.ywindow = int(config['graphs']['ywindow'])
         self.xinterval = int(config['graphs']['xinterval'])
@@ -122,6 +121,7 @@ class CombinedAnalysis:
             'execution': {
                 'numSimulations': self.num_simulators,
                 'simulationSeconds': self.simulation_window,
+                'numTraders': self.num_traders,
                 'parallel': True,
                 'logLevel': "INFO"
             },

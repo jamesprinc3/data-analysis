@@ -4,6 +4,7 @@ import datetime
 import logging
 import pathlib
 import time
+import matplotlib
 
 import dask.dataframe as dd
 
@@ -215,6 +216,10 @@ if __name__ == "__main__":
 
     mode = config['behaviour']['mode']
     root_path = config['full_paths']['root']
+    graph_mode = config['graphs']['mode']
+
+    if graph_mode == "save":
+        matplotlib.use('PS')
 
     prog_start = datetime.datetime.now()
 
