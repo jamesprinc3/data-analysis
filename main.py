@@ -57,6 +57,8 @@ def backtest_mode(st: datetime.datetime = None):
 
     all_data = DataLoader.load_split_data(config.real_root, all_data_st, all_data_et, config.product)
 
+    validate = None
+
     for i in range(0, config.num_predictions):
         logger.info("Iteration " + str(i))
         sim_st = add_secs(st, config.interval * i)
@@ -81,10 +83,13 @@ def backtest_mode(st: datetime.datetime = None):
 
             combined_analysis = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
+            if validate is not None:
+                validate.result()
+
             combined_analysis.run_simulation()
 
             logger.info("Starting validation in other proc")
-            combined_analysis.validate_analyses(prog_start)
+            validate = combined_analysis.validate_analyses(prog_start)
             logger.info("Validation started")
 
             # Check that previous validation has ended
@@ -99,6 +104,9 @@ def backtest_mode(st: datetime.datetime = None):
             logger.error("Combined failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
         finally:
             print(sorted(mem.create_summary(), reverse=True, key=itemgetter(2))[:10])
+
+    validate.result()
+
 
 
 def real_mode(st: datetime.datetime = None):

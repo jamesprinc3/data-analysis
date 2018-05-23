@@ -182,8 +182,8 @@ class Backtest:
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
                                                               real_prices):
         self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
-        self.config.xlabel("Time (seconds)")
-        self.config.ylabel("Price ($)")
+        self.config.plt.xlabel("Time (seconds)")
+        self.config.plt.ylabel("Price ($)")
 
         # plot the data
         self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,

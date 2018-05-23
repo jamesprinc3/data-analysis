@@ -56,7 +56,7 @@ class Config:
         if self.graph_mode == "save":
             matplotlib.use('PS')
 
-        import matplotlib as plt
+        import matplotlib.pyplot as plt
 
         self.plt = plt
 
