@@ -55,13 +55,6 @@ class Backtest:
 
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
 
-        import matplotlib
-
-        matplotlib.use('PS')
-
-        import matplotlib.pyplot as plt
-
-        self.plt = plt
 
     def run_simulation(self):
         params_path = self.params_path \
@@ -190,9 +183,9 @@ class Backtest:
 
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
                                                               real_prices):
-        self.plt.title(self.config.product + " at " + self.__get_plot_title())
-        self.plt.xlabel("Time (seconds)")
-        self.plt.ylabel("Price ($)")
+        self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
+        self.config.xlabel("Time (seconds)")
+        self.config.ylabel("Price ($)")
 
         # plot the data
         self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
@@ -206,13 +199,13 @@ class Backtest:
 
             # Save plot
             plot_path = plot_root + self.__get_plot_title() + ".png"
-            self.plt.savefig(plot_path, dpi=600, transparent=True)
+            self.config.plt.savefig(plot_path, dpi=600, transparent=True)
             self.logger.info("Saved plot to: " + plot_path)
 
         if self.config.show_graphs:
-            self.plt.show()
+            self.config.plt.show()
 
-        self.plt.close()
+        self.config.plt.close()
 
     def __get_plot_title(self):
         plot_path = self.sim_st.time().isoformat() \

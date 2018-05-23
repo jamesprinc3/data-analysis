@@ -1,15 +1,14 @@
 from typing import List
 
 import dask.dataframe as dd
-import matplotlib.pyplot as plt
 
 from data.data_utils import DataUtils
 from output.graphing import Graphing
 
 
 class RealAnalysis:
-    def __init__(self, data_description: str):
-
+    def __init__(self, config, data_description: str):
+        self.config = config
         self.data_description = data_description
 
     def generate_graphs(self, orders_df: dd, trades_df: dd, cancels_df: dd):
@@ -20,7 +19,7 @@ class RealAnalysis:
         graph_creator.graph_interval(orders_df)
         graph_creator.graph_price_time(trades_df, "Price over time")
 
-        plt.show()
+        self.config.plt.show()
 
     def get_prices_at_times(self, seconds_list: List[int]):
         map(lambda x: DataUtils.get_last_price_before(self.trades_df, x), seconds_list)

@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import scipy.stats as st
 import matplotlib
-import matplotlib.pyplot as plt
 
 
 class DistributionFitter:
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
         matplotlib.style.use('ggplot')
 
@@ -168,7 +168,7 @@ class DistributionFitter:
         self.plot_data_with_distribution(data, best_dist, best_fit_params, data_desc, xlabel, bins=200)
 
     def plot_data_with_distribution(self, data, dist, fit_params, data_desc: str, xlabel: str, bins=200):
-        plt.figure(figsize=(12, 8))
+        self.config.plt.figure(figsize=(12, 8))
         pdf = self.make_pdf(dist, fit_params)
         ax = pdf.plot(lw=2, label='PDF', legend=True)
         data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)

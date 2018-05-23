@@ -4,7 +4,6 @@ import math
 import pathlib
 from typing import List
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
 
@@ -21,6 +20,7 @@ class SimulationAnalysis:
         :param config: initial application config
         """
         self.logger = logging.getLogger()
+        self.config = config
 
         self.sim_root = config.sim_root \
                         + sim_st.date().isoformat() + "/" \
@@ -57,7 +57,7 @@ class SimulationAnalysis:
             # self.graph_creator.graph_interval(orders_df)
 
             # graphs.graph_price_quantity(trades_df)
-            plt.show()
+            self.config.plt.show()
             i += 1
 
     def dump_confidence_data(self, dst, time_prices_dict: dict, time_confidence_dict: dict):

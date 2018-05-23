@@ -50,3 +50,14 @@ class Config:
 
         self.ywindow = int(config['graphs']['ywindow'])
         self.xinterval = int(config['graphs']['xinterval'])
+
+        import matplotlib
+
+        if self.graph_mode == "save":
+            matplotlib.use('PS')
+
+        import matplotlib as plt
+
+        self.plt = plt
+
+

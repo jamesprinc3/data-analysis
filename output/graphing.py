@@ -2,8 +2,6 @@ import logging
 
 import dask.dataframe as dd
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
 
 from data.data_splitter import DataSplitter
 from data.data_transformer import DataTransformer
@@ -14,9 +12,6 @@ from distribution_fitter import DistributionFitter
 class Graphing:
     def __init__(self, config, data_desc: str):
         self.config = config
-
-        if config.graph_mode == "save":
-            matplotlib.use('PS')
 
         self.data_description = data_desc
         self.logger = logging.getLogger()
@@ -57,7 +52,7 @@ class Graphing:
         sell_prices = DataTransformer.get_relative_prices(trades_df, sell_orders)
 
         # Graphing
-        plt.figure(figsize=(12, 8))
+        self.config.plt.figure(figsize=(12, 8))
 
         self.graph_distribution(buy_prices, self.data_description + ", Buy Side", "Price relative to most recent trade",
                                 bins=num_bins)
@@ -72,12 +67,12 @@ class Graphing:
         start_time = times.min()
         x = times.apply(lambda z: (z - start_time) / 1e9)
 
-        plt.plot(x, y, marker)
+        self.config.plt.plot(x, y, marker)
 
     def graph_price_time(self, df: dd, data_desc: str, mid: int, ywindow: int):
         #
         print(df)
-        plt.figure(figsize=(12, 8))
+        self.config.plt.figure(figsize=(12, 8))
 
         buy_df = DataSplitter.get_side("buy", df)
         sell_df = DataSplitter.get_side("sell", df)
@@ -85,18 +80,18 @@ class Graphing:
         self.__graph_price_time_set(buy_df, 'r+')
         self.__graph_price_time_set(sell_df, 'b+')
 
-        plt.xlabel('Time (s)')
-        plt.ylabel('Price ($)')
+        self.config.plt.xlabel('Time (s)')
+        self.config.plt.ylabel('Price ($)')
 
         ymax = mid + (ywindow / 2)
         ymin = mid - (ywindow / 2)
 
-        plt.ylim(ymin, ymax)
-        plt.xlim(0, self.config.simulation_window)
+        self.config.plt.ylim(ymin, ymax)
+        self.config.plt.xlim(0, self.config.simulation_window)
 
-        plt.title(self.data_description + " " + data_desc + ' price')
+        self.config.plt.title(self.data_description + " " + data_desc + ' price')
 
-        return plt
+        return self.config.plt
 
     def graph_order_cancel_relative_price_distribution(self, feed_df):
         trades_df = DataSplitter.get_trades(feed_df)
@@ -110,8 +105,8 @@ class Graphing:
         prices = df['price'].astype('float64').tolist()
         quantities = df['size'].astype('float64').tolist()
 
-        plt.figure(figsize=(12, 8))
-        plt.scatter(prices, quantities, marker='+')
+        self.config.plt.figure(figsize=(12, 8))
+        self.config.plt.scatter(prices, quantities, marker='+')
 
     @staticmethod
     def date_to_unix(s, unit: str):
@@ -133,16 +128,16 @@ class Graphing:
     def plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
                                          color_shading=None):
         # Set bounds and make title (+ for axes)
-        plt.figure(figsize=(12, 8))
+        self.config.plt.figure(figsize=(12, 8))
         ymin = real_prices.iloc[0] - (self.config.ywindow / 2)
         ymax = real_prices.iloc[0] + (self.config.ywindow / 2)
-        plt.ylim(ymin, ymax)
+        self.config.plt.ylim(ymin, ymax)
 
         # plot the shaded range of the confidence intervals
-        plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
+        self.config.plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
                          label="Simulated 95% Confidence Interval")
 
         # plot the mean on top
-        plt.plot(times, mean, color_mean, label="Simulated Mean")
-        plt.plot(real_times, real_prices, 'r+', label="Real Trades")
-        plt.legend(loc='upper right')
+        self.config.plt.plot(times, mean, color_mean, label="Simulated Mean")
+        self.config.plt.plot(real_times, real_prices, 'r+', label="Real Trades")
+        self.config.plt.legend(loc='upper right')
