@@ -50,8 +50,8 @@ def take_secs(dt: datetime, secs: int):
 
 
 def backtest_mode(st: datetime.datetime = None):
-    all_data_st = take_secs(st, config.orderbook_window)
-    all_data_et = add_secs(st, (config.num_predictions - 1) * config.interval)
+    all_data_st = take_secs(st, max(config.orderbook_window, config.sampling_window))
+    all_data_et = add_secs(st, config.num_predictions * config.interval)
 
     mem = tracker.SummaryTracker()
 
@@ -81,28 +81,19 @@ def backtest_mode(st: datetime.datetime = None):
             all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
                                   all_data)
 
-            combined_analysis = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+            backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
             if validate is not None:
                 validate.result()
 
-            success = combined_analysis.run_simulation()
+            success = backtest.run_simulation()
 
             if success:
                 logger.info("Starting validation in other proc")
-                validate = combined_analysis.validate_analyses(prog_start)
+                validate = backtest.validate_analyses(prog_start)
                 logger.info("Validation started")
-
-            # Check that previous validation has ended
-            # if validation_process is not None:
-            #     validation_process.join()
-            # logger.info("Starting validation in separate process")
-            # validation_process = Process(target=combined_analysis.validate_analyses())
-            # validation_process.start()
-            # logger.info("Validation started")
-            # validation_process.join()
         except Exception as exception:
-            logger.error("Combined failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
+            logger.error("Backtest failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
         finally:
             print(sorted(mem.create_summary(), reverse=True, key=itemgetter(2))[:10])
 
@@ -118,7 +109,7 @@ def real_mode(st: datetime.datetime = None):
     sampling_window_end_time = st
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, sampling_window_start_time,
                                                                   sampling_window_end_time, config.product)
-    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Combined " + config.product)
+    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Backtest " + config.product)
 
     if config.fit_distributions and config.params_path:
         params = generate_order_params(real_analysis.trades_df, real_analysis.orders_df, real_analysis.cancels_df)
@@ -132,21 +123,14 @@ def simulation_mode(st: datetime.datetime = None):
 
 
 def orderbook_mode(st: datetime.datetime = None):
-    if not st:
-        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
 
-    root = config['full_paths']['root']
-    orderbook_path = root + config['part_paths']['orderbook_path']
-
-    orderbook_window_start_time = st - datetime.timedelta(seconds=orderbook_window)
-    orderbook_window_end_time = st
-
-    orders_df, trades_df, cancels_df = DataLoader.load_split_data(real_root, orderbook_window_start_time,
-                                                                  orderbook_window_end_time, product)
-
-    ob_state = OrderBook.load_orderbook_state(orderbook_path)
+    closest_ob_state, closest_ob_state_str = OrderBook.locate_closest_ob_state(config.orderbook_output_root, st)
+    orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, closest_ob_state,
+                                                                  st, config.product)
+    ob_state_path = config.root_path + closest_ob_state_str
+    ob_state = OrderBook.load_orderbook_state(ob_state_path)
     orderbook = OrderBook.get_orderbook(orders_df, trades_df, cancels_df, ob_state)
-    output_file = "/Users/jamesprince/project-data/orderbook-" + orderbook_window_end_time.isoformat() + ".csv"
+    output_file = "/Users/jamesprince/project-data/orderbook-" + st.isoformat() + ".csv"
     OrderBook.orderbook_to_file(orderbook, output_file)
 
     logger.info("Orderbook saved to: " + output_file)

@@ -27,7 +27,7 @@ class Config:
         pathlib.Path(self.params_path).mkdir(parents=True, exist_ok=True)
         self.sim_logs_root = root_path + config['part_paths']['sim_logs_root']
 
-        self.orderbook_root = root_path + config['part_paths']['orderbook_output_root']
+        self.orderbook_output_root = root_path + config['part_paths']['orderbook_output_root']
         self.correlation_root = root_path + config['part_paths']['correlation_output_root']
         self.confidence_root = root_path + config['part_paths']['confidence_output_root']
 

@@ -70,14 +70,16 @@ class Backtest:
             Writer.json_to_file(params, params_path)
             self.logger.info("Permanent parameters saved to: " + params_path)
 
-        # Get orderbook
+        # Reconstruct orderbook
         orders_df, trades_df, cancels_df = self.all_ob_data
-        closest_state_file_path = OrderBook.locate_closest_ob_state(self.config.orderbook_input_root, self.sim_st)
+        _, closest_state_str = OrderBook.locate_closest_ob_state(self.config.orderbook_input_root, self.sim_st)
+        closest_state_file_path = self.config.orderbook_input_root + closest_state_str
+        self.logger.info("Closest order book path: " + closest_state_file_path)
         ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
         ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
 
         # Save orderbook
-        orderbook_path = self.config.orderbook_root + self.orderbook_window_end_time.isoformat() + ".csv"
+        orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(ob_final, orderbook_path)
         self.logger.info("Orderbook saved to: " + orderbook_path)
 

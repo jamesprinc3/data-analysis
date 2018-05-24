@@ -34,9 +34,11 @@ class OrderBook:
     def locate_closest_ob_state(root: str, time: datetime.datetime):
         files = OrderBook.enum_all_files(root)
         files_before_time = list(filter(lambda f: f < time.isoformat(), files))
-        closest_state = files_before_time[-1]
+        closest_state_str = files_before_time[-1]
 
-        return root + closest_state
+        closest_state_time = datetime.datetime.strptime(closest_state_str.rsplit(".", 2)[0], "%Y-%m-%dT%H:%M:%S")
+
+        return closest_state_time, closest_state_str
 
     @staticmethod
     def load_orderbook_state(path: str):
