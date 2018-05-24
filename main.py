@@ -86,11 +86,12 @@ def backtest_mode(st: datetime.datetime = None):
             if validate is not None:
                 validate.result()
 
-            combined_analysis.run_simulation()
+            success = combined_analysis.run_simulation()
 
-            logger.info("Starting validation in other proc")
-            validate = combined_analysis.validate_analyses(prog_start)
-            logger.info("Validation started")
+            if success:
+                logger.info("Starting validation in other proc")
+                validate = combined_analysis.validate_analyses(prog_start)
+                logger.info("Validation started")
 
             # Check that previous validation has ended
             # if validation_process is not None:

@@ -128,9 +128,11 @@ class Backtest:
                 f.write(str(error))
 
             self.logger.info("Writing output and error to: " + self.sim_logs_path)
+            return True
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
             self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
+            return False
 
     @concurrent.process(timeout=None)
     def validate_analyses(self, prog_start: datetime.datetime):
