@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+import scipy.special
 
 
 class Evaluation:
@@ -12,7 +13,7 @@ class Evaluation:
         return df
 
     @staticmethod
-    def correlate(df, window: int = 400):
+    def correlate(df, window: int = 10):
         plt.figure(figsize=(12, 8))
 
         minimum = -window / 2
@@ -38,6 +39,11 @@ class Evaluation:
 
         print(str(correct_dirs) + "/" + str(total_dirs) + " direction predictions were correct")
 
+        binom_coeff = scipy.special.binom(total_dirs, correct_dirs)  # (n..k)
+        prob = binom_coeff * (0.5 ** correct_dirs) * (0.5 ** (total_dirs - correct_dirs))
+
+        print("prob: " + str(prob))
+
         print("Corr coeff " + str(np.corrcoef(df['rp_diff'], df['sp_diff'])))
 
         ling = scipy.stats.linregress(df['rp_diff'], df['sp_diff'])
@@ -46,9 +52,8 @@ class Evaluation:
 
         x = np.linspace(minimum, maximum)
 
-        plt.plot(x, (x*slope) + intercept)
+        plt.plot(x, (x * slope) + intercept)
 
         plt.scatter(df['rp_diff'], df['sp_diff'])
 
         plt.show()
-

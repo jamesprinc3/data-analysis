@@ -56,6 +56,7 @@ class DataLoader:
         hour_delta = end_time.hour - start_time.hour
         files_to_load = []
 
+        # TODO: introduce wrapping over days
         # TODO: split this function up!
         for i in range(0, hour_delta + 1):
             filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"

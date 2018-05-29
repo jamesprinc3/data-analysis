@@ -42,7 +42,7 @@ class DistributionFitter:
 
         DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2,
                          st.gamma,  st.expon, st.laplace, st.pareto, st.poisson,
-                         st.lognorm, st.norm, st.vonmises]  # st.f, st.gumbel_r, st.gumbel_l,, st.weibull_min, st.weibull_max] #st.loggamma,
+                         st.lognorm, st.norm]  # st.vonmises, st.f, st.gumbel_r, st.gumbel_l,, st.weibull_min, st.weibull_max] #st.loggamma,
 
         # DISTRIBUTIONS = [st.expon]
 
