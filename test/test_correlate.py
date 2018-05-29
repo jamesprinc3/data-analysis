@@ -14,7 +14,7 @@ class TestCorrelation(TestCase):
         rp, sp = Evaluation.load("/Users/jamesprince/project-data/results/correlations/2018-05-23T15:15:12.267315.csv")
 
     def test_can_correlate(self):
-        df = Evaluation.load("/Users/jamesprince/project-data/results/correlations/LTC-USD.csv")
+        df = Evaluation.load("/Users/jamesprince/project-data/results/correlations/LTC-cov.csv")
         # df = Correlation.load("/Users/jamesprince/project-data/results/correlations/2018-05-22T10:57:45.196921.csv")
 
         Evaluation.correlate(df)

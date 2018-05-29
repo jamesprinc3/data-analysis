@@ -24,10 +24,16 @@ class Evaluation:
         plt.plot([minimum, maximum], [minimum, maximum])
 
         df['rp_diff'] = df['last_real_price'] - df['start_price']
-        df['sp_diff'] = df['last_sim_price'] - df['start_price']
+        df['sp_diff'] = df['last_sim_price_mean'] - df['start_price']
+
+        df['above_lb'] = df['last_sim_price_lb'] < df['last_real_price']
+        df['below_ub'] = df['last_real_price'] < df['last_sim_price_ub']
+        df['in_bounds'] = df.apply(lambda row: row['above_lb'] and row['below_ub'], axis=1)
 
         df = df[abs(df['sp_diff']) < (window / 2)]
         df = df[abs(df['rp_diff']) < (window / 2)]
+
+
 
         df['rp_dir'] = np.sign(df['rp_diff'])
         df['sp_dir'] = np.sign(df['sp_diff'])

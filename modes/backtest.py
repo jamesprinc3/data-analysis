@@ -142,25 +142,31 @@ class Backtest:
         validation_data = self.get_validation_data(sim_analysis)
 
         correlation_file_path = self.config.correlation_root + prog_start.isoformat() + ".csv"
-        self.append_final_prices(correlation_file_path, validation_data[0], validation_data[5])
+        self.append_final_prices(correlation_file_path, validation_data[0], validation_data[1],
+                                 validation_data[2], validation_data[5])
         self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
 
-    def append_final_prices(self, dst, sim_means, real_prices):
+    def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
         start_price = real_prices.dropna().iloc[0]
 
         last_real_price = real_prices.dropna().iloc[-1]
-        last_sim_price = sim_means[-1]
+        last_sim_price_mean = sim_means[-1]
+        last_sim_price_ub = sim_ubs[-1]
+        last_sim_price_lb = sim_lbs[-1]
 
         if not os.path.isfile(dst):
             with open(dst, 'w', newline='') as csvfile:
-                fieldnames = ['start_time', 'start_price', 'last_real_price', 'last_sim_price']
+                fieldnames = ['start_time', 'start_price', 'last_real_price',
+                              'last_sim_price_mean', 'last_sim_price_ub', 'last_sim_price_lb']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
 
         with open(dst, 'a', newline='') as fd:
             row = ",".join(
-                [self.sim_st.isoformat(), str(start_price), str(last_real_price), str(last_sim_price)]) + "\n"
+                [self.sim_st.isoformat(), str(start_price), str(last_real_price),
+                 str(last_sim_price_mean), str(last_sim_price_ub), str(last_sim_price_lb)
+                 ]) + "\n"
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
