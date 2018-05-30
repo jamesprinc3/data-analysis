@@ -91,11 +91,10 @@ def backtest_mode(st: datetime.datetime = None):
             logger.error("Error occurred when gathering data: " + str(exception))
             backtest = None
 
+        if validate is not None:
+            validate.result()
+
         try:
-
-            if validate is not None:
-                validate.result()
-
             if backtest is not None:
                 success = backtest.run_simulation()
 
