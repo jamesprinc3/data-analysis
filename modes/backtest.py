@@ -140,11 +140,13 @@ class Backtest:
     def validate_analyses(self, prog_start: datetime.datetime):
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         validation_data = self.get_validation_data(sim_analysis)
+        monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
 
         correlation_file_path = self.config.correlation_root + prog_start.isoformat() + ".csv"
         self.append_final_prices(correlation_file_path, validation_data[0], validation_data[1],
                                  validation_data[2], validation_data[5])
         self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
+        self.graph_monte_carlo_data(validation_data[5].iloc[0], monte_carlo_data)
 
     def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
         start_price = real_prices.dropna().iloc[0]
@@ -170,9 +172,7 @@ class Backtest:
             fd.write(row)
 
     def get_validation_data(self, sim_analysis: SimulationAnalysis):
-        times = list(range(self.config.xinterval,
-                           self.config.simulation_window + self.config.xinterval,
-                           self.config.xinterval))
+        times = self.get_times()
 
         confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
         self.logger.info(confidence_intervals)
@@ -188,6 +188,12 @@ class Backtest:
         times = [0] + times
 
         return sim_means, sim_ub, sim_lb, times, real_times, real_prices
+
+    def get_times(self):
+        times = list(range(self.config.xinterval,
+                           self.config.simulation_window + self.config.xinterval,
+                           self.config.xinterval))
+        return times
 
     def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
                                                               real_prices):
@@ -248,3 +254,33 @@ class Backtest:
         real_times = trades_df['time']
         real_prices = trades_df['price']
         return real_times, real_prices
+
+    def get_monte_carlo_data(self, sim_analysis):
+        sim_prices = {}
+        times = self.get_times()
+
+        for index in range(0, len(sim_analysis.all_sims)):
+            sim_prices[index] = []
+
+        for index in range(0, len(sim_analysis.all_sims)):
+            sim = sim_analysis.all_sims[index]
+            _, trades_dd, _ = sim
+            trades_df = trades_dd.compute()
+            for seconds in times:
+                price = DataUtils.get_last_price_before(trades_df, seconds)
+                sim_prices[index].append(price)
+        return sim_prices
+
+    def graph_monte_carlo_data(self, start_price, monte_carlo_data):
+
+        self.config.plt.figure(figsize=(12, 8))
+        ymin = start_price - (self.config.ywindow / 2)
+        ymax = start_price + (self.config.ywindow / 2)
+        self.config.plt.ylim(ymin, ymax)
+
+        times = self.get_times()
+
+        for _, prices_for_sim in monte_carlo_data.items():
+            self.config.plt.plot(times, prices_for_sim)
+
+        self.config.plt.show()

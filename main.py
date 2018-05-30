@@ -41,6 +41,7 @@ def get_all_data(st: datetime, config):
 
     return all_ob_data, all_sampling_data, all_future_data
 
+
 def add_secs(dt: datetime, secs: int):
     return dt + datetime.timedelta(seconds=secs)
 
@@ -70,6 +71,9 @@ def backtest_mode(st: datetime.datetime = None):
         sam_st = take_secs(sim_st, config.sampling_window)
         sam_et = sim_st
 
+        success = False
+        backtest = None
+
         try:
             logger.info("Gathering data for simulation at: " + sim_st.isoformat())
             all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
@@ -83,22 +87,27 @@ def backtest_mode(st: datetime.datetime = None):
 
             backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
+        except Exception as exception:
+            logger.error("Error occurred when gathering data: " + str(exception))
+            backtest = None
+
+        try:
+
             if validate is not None:
                 validate.result()
 
-            success = backtest.run_simulation()
+            if backtest is not None:
+                success = backtest.run_simulation()
 
-            if success:
-                logger.info("Starting validation in other proc")
-                validate = backtest.validate_analyses(prog_start)
-                logger.info("Validation started")
         except Exception as exception:
             logger.error("Backtest failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
         finally:
             print(sorted(mem.create_summary(), reverse=True, key=itemgetter(2))[:10])
-
+            if success:
+                logger.info("Starting validation in other proc")
+                validate = backtest.validate_analyses(prog_start)
+                logger.info("Validation started")
     validate.result()
-
 
 
 def real_mode(st: datetime.datetime = None):
@@ -123,7 +132,6 @@ def simulation_mode(st: datetime.datetime = None):
 
 
 def orderbook_mode(st: datetime.datetime = None):
-
     closest_ob_state, closest_ob_state_str = OrderBook.locate_closest_ob_state(config.orderbook_output_root, st)
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, closest_ob_state,
                                                                   st, config.product)

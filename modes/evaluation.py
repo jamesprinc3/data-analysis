@@ -33,8 +33,6 @@ class Evaluation:
         df = df[abs(df['sp_diff']) < (window / 2)]
         df = df[abs(df['rp_diff']) < (window / 2)]
 
-
-
         df['rp_dir'] = np.sign(df['rp_diff'])
         df['sp_dir'] = np.sign(df['sp_diff'])
 
@@ -44,6 +42,7 @@ class Evaluation:
         correct_dirs = len(df[df['rp_dir'] == df['sp_dir']])
 
         print(str(correct_dirs) + "/" + str(total_dirs) + " direction predictions were correct")
+        print(str(len(df[df['in_bounds'] == True])) + "/" + str(total_dirs) + " were in simulation bounds")
 
         binom_coeff = scipy.special.binom(total_dirs, correct_dirs)  # (n..k)
         prob = binom_coeff * (0.5 ** correct_dirs) * (0.5 ** (total_dirs - correct_dirs))
