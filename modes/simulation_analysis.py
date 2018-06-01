@@ -13,13 +13,12 @@ from output.graphing import Graphing
 
 
 class SimulationAnalysis:
-    logger = logging.getLogger()
 
     def __init__(self, config, sim_st: datetime.datetime):
         """
         :param config: initial application config
         """
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.config = config
 
         self.sim_root = config.sim_root \

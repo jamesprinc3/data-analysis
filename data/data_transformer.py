@@ -11,7 +11,7 @@ from stats import Statistics
 class DataTransformer:
 
     def __init__(self):
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     # Perhaps this ought to be moved somewhere
     @staticmethod

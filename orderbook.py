@@ -13,7 +13,7 @@ from data.data_splitter import DataSplitter
 
 
 class OrderBook:
-    logger = logging.getLogger()
+    logger = logging.getLogger("OrderBook")
 
     @staticmethod
     def get_spread(ob_state: dd) -> float:
@@ -91,7 +91,25 @@ class OrderBook:
 
         return highest_buy < lowest_sell
 
-    @staticmethod
-    def orderbook_to_file(orderbook: pd.DataFrame, file_path: str):
-        orderbook.sort_values(by='price', inplace=True)
-        orderbook.to_csv(file_path)
+    @classmethod
+    def orderbook_to_file(cls, orderbook: pd.DataFrame, file_path: str) -> None:
+        try:
+            orderbook.sort_values(by='price', inplace=True)
+            orderbook.to_csv(file_path)
+            cls.logger.info("Orderbook saved to: " + file_path)
+        except Exception as e:
+            cls.logger.error("Failed to save orderbook to " + file_path + " exception: " + str(e))
+            raise e
+
+
+def reconstruct_orderbook(all_ob_data, config, sim_st, logger):
+    try:
+        orders_df, trades_df, cancels_df = all_ob_data
+        _, closest_state_str = OrderBook.locate_closest_ob_state(config.orderbook_input_root, sim_st)
+        closest_state_file_path = config.orderbook_input_root + closest_state_str
+        logger.info("Closest order book path: " + closest_state_file_path)
+        ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
+        ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
+        return ob_final
+    except Exception as e:
+        logger.error("Order Book Reconstruction failed: " + str(e))

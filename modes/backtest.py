@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import subprocess
+import time
 from datetime import timedelta
 
 from pebble import concurrent
@@ -11,13 +12,12 @@ from pebble import concurrent
 import numpy as np
 import pathlib
 
-from modes.real_analysis import RealAnalysis
 from modes.sample import Sample
 from modes.simulation_analysis import SimulationAnalysis
 from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
 from data.data_utils import DataUtils
-from orderbook import OrderBook
+from orderbook import OrderBook, reconstruct_orderbook
 from output.graphing import Graphing
 from sim_config import SimConfig
 from stats import Statistics
@@ -26,7 +26,7 @@ from output.writer import Writer
 
 class Backtest:
     def __init__(self, config, sim_st: datetime, all_ob_data, all_sampling_data, all_future_data):
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.config = config
 
@@ -55,7 +55,7 @@ class Backtest:
 
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
 
-    def run_simulation(self):
+    def prepare_simulation(self):
         params_path = self.params_path \
                       + self.sim_st.time().isoformat() + ".json"
         if self.config.use_cached_params and os.path.isfile(params_path):
@@ -70,21 +70,51 @@ class Backtest:
             Writer.json_to_file(params, params_path)
             self.logger.info("Permanent parameters saved to: " + params_path)
 
-        # Reconstruct orderbook
-        orders_df, trades_df, cancels_df = self.all_ob_data
-        _, closest_state_str = OrderBook.locate_closest_ob_state(self.config.orderbook_input_root, self.sim_st)
-        closest_state_file_path = self.config.orderbook_input_root + closest_state_str
-        self.logger.info("Closest order book path: " + closest_state_file_path)
-        ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
-        ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
+        ob_final = reconstruct_orderbook(self.all_ob_data, self.config, self.sim_st, self.logger)
 
         # Save orderbook
         orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
         OrderBook.orderbook_to_file(ob_final, orderbook_path)
-        self.logger.info("Orderbook saved to: " + orderbook_path)
 
         # Generate .conf file
-        # TODO: generate this in a function further up the chain
+        sim_config = self.generate_config_dict(orderbook_path, params_path)
+        sim_config_string = SimConfig.generate_config_string(sim_config)
+        self.save_config(sim_config_string)
+
+    def run_simulation(self) -> bool:
+        self.logger.info("Running simulations")
+        bash_command = "java -jar " + self.config.jar_path + " " + self.config.sim_config_path
+        # Have to initialise name so it can be terminated in the finally clause
+        sim_process = None
+        try:
+            t0 = time.time()
+            sim_process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
+            output, error = sim_process.communicate(timeout=self.config.sim_timeout)
+
+            self.logger.info("Simulations complete, took " + str(time.time() - t0) + " seconds")
+
+            with open(self.sim_logs_path, 'w') as f:
+                f.write(str(output))
+                f.write("\n")
+                f.write(str(error))
+
+            self.logger.info("Writing output and error to: " + self.sim_logs_path)
+            return True
+        except subprocess.TimeoutExpired:
+            os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
+            self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
+            return False
+
+    def save_config(self, sim_config_string):
+        try:
+            f = open(self.config.sim_config_path, 'w')
+            f.write(sim_config_string)
+            f.close()
+            self.logger.info("Wrote sim config to: " + self.config.sim_config_path)
+        except Exception as e:
+            self.logger.error("Failed writing sim config to " + self.config.sim_config_path + " exception: " + str(e))
+
+    def generate_config_dict(self, orderbook_path, params_path):
         sim_config = {'paths': {
             'simRoot': self.sim_root,
             'params': params_path,
@@ -102,39 +132,7 @@ class Backtest:
             'orderbook': {
                 'stp': False
             }}
-        sim_config_string = SimConfig.generate_config_string(sim_config)
-
-        f = open(self.config.sim_config_path, 'w')
-        f.write(sim_config_string)
-        f.close()
-
-        self.logger.info("Wrote sim config to: " + self.config.sim_config_path)
-
-        # Start simulation
-        bash_command = "java -jar " + self.config.jar_path + " " + self.config.sim_config_path
-
-        self.logger.info("Running simulations")
-
-        # Have to initialise name so it can be terminated in the finally clause
-        sim_process = None
-
-        try:
-            sim_process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, preexec_fn=os.setsid)
-            output, error = sim_process.communicate(timeout=self.config.sim_timeout)
-
-            self.logger.info("Simulations complete")
-
-            with open(self.sim_logs_path, 'w') as f:
-                f.write(str(output))
-                f.write("\n")
-                f.write(str(error))
-
-            self.logger.info("Writing output and error to: " + self.sim_logs_path)
-            return True
-        except subprocess.TimeoutExpired:
-            os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
-            self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
-            return False
+        return sim_config
 
     @concurrent.process(timeout=None)
     def validate_analyses(self, prog_start: datetime.datetime):

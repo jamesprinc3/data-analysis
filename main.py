@@ -87,8 +87,8 @@ def backtest_mode(st: datetime.datetime = None):
 
             backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
-        except Exception as exception:
-            logger.error("Error occurred when gathering data: " + str(exception))
+        except Exception as e:
+            logger.error("Error occurred when gathering data: " + str(e))
             backtest = None
 
         if validate is not None:
@@ -96,16 +96,26 @@ def backtest_mode(st: datetime.datetime = None):
 
         try:
             if backtest is not None:
-                success = backtest.run_simulation()
+                success = backtest.prepare_simulation()
 
-        except Exception as exception:
-            logger.error("Backtest failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(exception))
+        except Exception as e:
+            logger.error("Simulation preparation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
+            continue
+
+        try:
+            if backtest is not None:
+                backtest.run_simulation()
+        except Exception as e:
+            logger.error(
+                "Simulation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
+            continue
         finally:
             print(sorted(mem.create_summary(), reverse=True, key=itemgetter(2))[:10])
             if success:
                 logger.info("Starting validation in other proc")
                 validate = backtest.validate_analyses(prog_start)
                 logger.info("Validation started")
+
     validate.result()
 
 
@@ -147,7 +157,7 @@ if __name__ == "__main__":
     t0 = time.time()
 
     fileConfig('config/logging_config.ini')
-    logger = logging.getLogger()
+    logger = logging.getLogger("Main")
 
     parser = argparse.ArgumentParser(description='Analyse level III order book data')
     parser.add_argument('--config', metavar='path', type=str, nargs='?',

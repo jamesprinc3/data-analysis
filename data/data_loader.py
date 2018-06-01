@@ -13,7 +13,7 @@ class DataLoader:
     """Loads data and formats it appropriately so that we can always assume
     timestamps and floats are not string types to avoid silly conversions all over the place"""
     def __init__(self):
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def format_dd(self, df: dd) -> dd:
         df['time'] = df['time'].astype('datetime64[ns]')

@@ -14,7 +14,7 @@ class Graphing:
         self.config = config
 
         self.data_description = data_desc
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def graph_interval(self, orders_df: dd):
         order_time_delta_df = orders_df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
