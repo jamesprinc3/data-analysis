@@ -38,16 +38,20 @@ class Evaluation:
 
         print(df)
 
-        total_dirs = len(df)
+        total = len(df)
         correct_dirs = len(df[df['rp_dir'] == df['sp_dir']])
+        num_inbounds = len(df[df['in_bounds'] == True])
 
-        print(str(correct_dirs) + "/" + str(total_dirs) + " direction predictions were correct")
-        print(str(len(df[df['in_bounds'] == True])) + "/" + str(total_dirs) + " were in simulation bounds")
+        correct_pc = (correct_dirs / total) * 100
+        inbound_pc = (num_inbounds / total) * 100
 
-        binom_coeff = scipy.special.binom(total_dirs, correct_dirs)  # (n..k)
-        prob = binom_coeff * (0.5 ** correct_dirs) * (0.5 ** (total_dirs - correct_dirs))
+        print(str(correct_dirs) + "/" + str(total) + " (" + str(correct_pc) + "%) direction predictions were correct")
+        print(str(num_inbounds) + "/" + str(total) + " (" + str(inbound_pc) + "%) were in simulation bounds")
 
-        print("prob: " + str(prob))
+        binom_coeff = scipy.special.binom(total, correct_dirs)  # (n..k)
+        prob = binom_coeff * (0.5 ** correct_dirs) * (0.5 ** (total - correct_dirs))
+
+        print(str(prob * 100) + "% Probability of getting this result from random chance")
 
         print("Corr coeff " + str(np.corrcoef(df['rp_diff'], df['sp_diff'])))
 
