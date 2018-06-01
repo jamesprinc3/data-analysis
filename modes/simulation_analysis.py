@@ -13,12 +13,12 @@ from output.graphing import Graphing
 
 
 class SimulationAnalysis:
+    logger = logging.getLogger("SimulationAnalysis")
 
     def __init__(self, config, sim_st: datetime.datetime):
         """
         :param config: initial application config
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.config = config
 
         self.sim_root = config.sim_root \
@@ -59,13 +59,14 @@ class SimulationAnalysis:
             self.config.plt.show()
             i += 1
 
-    def dump_confidence_data(self, dst, time_prices_dict: dict, time_confidence_dict: dict):
-        self.logger.info("Dumping confidence data to " + dst)
+    @classmethod
+    def dump_confidence_data(cls, dst, time_prices_dict: dict, time_confidence_dict: dict):
+        cls.logger.info("Dumping confidence data to " + dst)
         with open(dst, 'w', newline='\n') as fd:
             fd.write(str(time_prices_dict))
             fd.write(str(time_confidence_dict))
 
-        self.logger.info("Confidence data dumped to: " + dst)
+        cls.logger.info("Confidence data dumped to: " + dst)
 
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):

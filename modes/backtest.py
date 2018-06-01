@@ -56,32 +56,39 @@ class Backtest:
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
 
     def prepare_simulation(self):
-        params_path = self.params_path \
-                      + self.sim_st.time().isoformat() + ".json"
-        if self.config.use_cached_params and os.path.isfile(params_path):
-            self.logger.info("Params file exists, therefore we're using it! " + params_path)
-        else:
-            self.logger.info("Not using params cache" + "\nGenerating params...")
-            # Get parameters
-            orders_df, trades_df, cancels_df = self.all_sampling_data
-            params = Sample.generate_order_params(trades_df, orders_df, cancels_df)
+        try:
+            params_path = self.params_path \
+                          + self.sim_st.time().isoformat() + ".json"
+            if self.config.use_cached_params and os.path.isfile(params_path):
+                self.logger.info("Params file exists, therefore we're using it! " + params_path)
+            else:
+                self.logger.info("Not using params cache" + "\nGenerating params...")
+                # Get parameters
+                orders_df, trades_df, cancels_df = self.all_sampling_data
+                params = Sample.generate_order_params(trades_df, orders_df, cancels_df)
 
-            # Save params (that can be reused!)
-            Writer.json_to_file(params, params_path)
-            self.logger.info("Permanent parameters saved to: " + params_path)
+                # Save params (that can be reused!)
+                Writer.json_to_file(params, params_path)
+                self.logger.info("Permanent parameters saved to: " + params_path)
 
-        ob_final = reconstruct_orderbook(self.all_ob_data, self.config, self.sim_st, self.logger)
+            ob_final = reconstruct_orderbook(self.all_ob_data, self.config, self.sim_st, self.logger)
 
-        # Save orderbook
-        orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
-        OrderBook.orderbook_to_file(ob_final, orderbook_path)
+            # Save orderbook
+            orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
+            OrderBook.orderbook_to_file(ob_final, orderbook_path)
 
-        # Generate .conf file
-        sim_config = self.generate_config_dict(orderbook_path, params_path)
-        sim_config_string = SimConfig.generate_config_string(sim_config)
-        self.save_config(sim_config_string)
+            # Generate .conf file
+            sim_config = self.generate_config_dict(orderbook_path, params_path)
+            sim_config_string = SimConfig.generate_config_string(sim_config)
+            self.save_config(sim_config_string)
+            return True
+        except Exception as e:
+            self.logger.error(
+                "Simulation preparation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
+            return False
 
-    def run_simulation(self) -> bool:
+    @concurrent.process(timeout=100)
+    def run_simulation(self):
         self.logger.info("Running simulations")
         bash_command = "java -jar " + self.config.jar_path + " " + self.config.sim_config_path
         # Have to initialise name so it can be terminated in the finally clause
@@ -99,11 +106,9 @@ class Backtest:
                 f.write(str(error))
 
             self.logger.info("Writing output and error to: " + self.sim_logs_path)
-            return True
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(sim_process.pid), signal.SIGTERM)
             self.logger.error("Timeout limit for sim was reached, JVM killed prematurely.")
-            return False
 
     def save_config(self, sim_config_string):
         try:
