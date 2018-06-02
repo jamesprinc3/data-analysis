@@ -57,7 +57,8 @@ def backtest_mode(st: datetime.datetime = None):
     all_data = DataLoader.load_split_data(config.real_root, all_data_st, all_data_et, config.product)
 
     validate_future = None
-    backtest= None
+    previous_backtest = None
+    current_backtest = None
     sim_future = None
     sim_success = False
     sim_st = None
@@ -84,36 +85,45 @@ def backtest_mode(st: datetime.datetime = None):
             all_future_data = map(lambda x: DataSplitter.get_between(x, sim_st, sim_et),
                                   all_data)
 
-            backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+            previous_backtest = current_backtest
+            current_backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
 
         except Exception as e:
             logger.error("Error occurred when gathering data: " + str(e))
-            backtest = None
+            current_backtest = None
 
         # Initiate simulation prep synchronously
-        prep_success = backtest.prepare_simulation()
+        prep_success = current_backtest.prepare_simulation()
 
         # Wait for previous simulation to finish
         sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 
+        # Wait for previous validation to finish
         wait_on_validation(validate_future)
-        validate_future = run_validation(backtest, sim_success, validate_future)
+        # Set off validation for previous iteration
+        validate_future = run_validation(previous_backtest, sim_success)
 
         # Run this current iteration's simulation async
-        if backtest is not None and prep_success:
-            sim_future = backtest.run_simulation()
+        if current_backtest is not None and prep_success:
+            sim_future = current_backtest.run_simulation()
+
+
+
+
 
     sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 
-    validate_future = run_validation(backtest, sim_success, validate_future)
+    validate_future = run_validation(current_backtest, sim_success)
     wait_on_validation(validate_future)
 
 
 def wait_on_simulation(sim_future, sim_st, sim_success):
     try:
         if sim_future is not None:
+            logger.info("Waiting for simulation to finish")
             sim_future.result()
             sim_success = True
+            logger.info("Simulation finished without error")
     except Exception as e:
         logger.error(
             "Simulation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
@@ -124,18 +134,21 @@ def wait_on_simulation(sim_future, sim_st, sim_success):
 def wait_on_validation(validate_future):
     try:
         if validate_future is not None:
-            logger.info("Waiting on validation")
+            logger.info("Waiting for validation to finish")
             validate_future.result()
+            logger.info("Validation finished without error")
     except Exception as e:
         logger.error("Error in validation: " + str(e))
 
 
-def run_validation(backtest, sim_success, validate_future):
+def run_validation(backtest, sim_success):
     if sim_success:
         logger.info("Starting validation in other proc")
         validate_future = backtest.validate_analyses(prog_start)
         logger.info("Validation started")
-    return validate_future
+        return validate_future
+    else:
+        return None
 
 
 def real_mode(st: datetime.datetime = None):
