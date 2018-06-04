@@ -35,12 +35,12 @@ class DataUtils:
         return s.dropna().iloc[0]
 
     @staticmethod
-    def get_last_price_before(trades_df: dd, seconds: int):
+    def get_last_price_before(df: dd, seconds: int):
 
-        if trades_df.empty:
+        if df.empty:
             return math.nan
 
-        local_df = trades_df.copy()
+        local_df = df.copy()
         local_df['time'] = DataUtils().get_times_in_seconds_after_start(local_df['time'])
         # logger.debug(local_df['time'])
         trades_before = local_df[local_df['time'] < seconds]

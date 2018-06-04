@@ -4,6 +4,7 @@ import datetime
 import logging
 import pathlib
 import time
+import traceback
 from logging.config import fileConfig
 from operator import itemgetter
 
@@ -106,10 +107,6 @@ def backtest_mode(st: datetime.datetime = None):
         # Run this current iteration's simulation async
         if current_backtest is not None and prep_success:
             sim_future = current_backtest.run_simulation()
-
-
-
-
 
     sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 

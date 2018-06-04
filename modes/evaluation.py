@@ -13,15 +13,26 @@ class Evaluation:
         return df
 
     @staticmethod
-    def correlate(df, window: int = 10):
+    def get_plt(window):
         plt.figure(figsize=(12, 8))
 
-        minimum = -window / 2
-        maximum = window / 2
+        maximum, minimum = Evaluation.get_min_max(window)
         # plt.xlim(minimum, maximum)
         # plt.ylim(minimum, maximum)
 
         plt.plot([minimum, maximum], [minimum, maximum])
+
+        return plt
+
+    @staticmethod
+    def get_min_max(window):
+        minimum = -window / 2
+        maximum = window / 2
+        return maximum, minimum
+
+    @staticmethod
+    def correlate(df, window: int = 10):
+        plt = Evaluation.get_plt(window)
 
         df['rp_diff'] = df['last_real_price'] - df['start_price']
         df['sp_diff'] = df['last_sim_price_mean'] - df['start_price']
@@ -38,6 +49,9 @@ class Evaluation:
 
         print(df)
 
+        Evaluation.up_down(df['rp_dir'], "Real")
+        Evaluation.up_down(df['sp_dir'], "Sim")
+
         total = len(df)
         correct_dirs = len(df[df['rp_dir'] == df['sp_dir']])
         num_inbounds = len(df[df['in_bounds'] == True])
@@ -53,12 +67,15 @@ class Evaluation:
 
         print(str(prob * 100) + "% Probability of getting this result from random chance")
 
+        print(str(1 - scipy.stats.binom.cdf(correct_dirs, total, 0.5)) + " p-value")
+
         print("Corr coeff " + str(np.corrcoef(df['rp_diff'], df['sp_diff'])))
 
         ling = scipy.stats.linregress(df['rp_diff'], df['sp_diff'])
         print("linregress: " + str(ling))
         slope, intercept, r_value, p_value, std_err = ling
 
+        minimum, maximum = Evaluation.get_min_max(window)
         x = np.linspace(minimum, maximum)
 
         plt.plot(x, (x * slope) + intercept)
@@ -66,3 +83,10 @@ class Evaluation:
         plt.scatter(df['rp_diff'], df['sp_diff'])
 
         plt.show()
+
+    @staticmethod
+    def up_down(s: pd.Series, description: str):
+        num_up = len(s.where(lambda x: x == 1).dropna())
+        num_down = len(s.where(lambda x: x == -1).dropna())
+        print(description + " num up : " + str(num_up))
+        print(description + " num down : " + str(num_down))

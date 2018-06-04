@@ -15,6 +15,12 @@ class DataLoader:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    def format_midprice_dd(self, df: dd) -> dd:
+        df['time'] = df['time'].astype('datetime64[ns]')
+        df['price'] = df['price'].astype('float64')
+
+        return df
+
     def format_dd(self, df: dd) -> dd:
         df['time'] = df['time'].astype('datetime64[ns]')
         df['price'] = df['price'].astype('float64')
@@ -30,7 +36,7 @@ class DataLoader:
         :return: orders, trades, cancels DataFrames
         """
         data_root = root
-        dirs = next(os.walk(data_root))[1]
+        dirs = self.get_dirs_in_dir(data_root)
 
         dirs_to_load = dirs[start_index:end_index]
         return_list = []
@@ -39,16 +45,29 @@ class DataLoader:
                 orders_path: str = data_root + directory + "/orders.csv"
                 trades_path: str = data_root + directory + "/trades.csv"
                 cancels_path: str = data_root + directory + "/cancels.csv"
+                midprices_path: str = data_root + directory + "/midprice.csv"
 
                 orders_dd = self.format_dd(dd.read_csv(orders_path))
                 trades_dd = self.format_dd(dd.read_csv(trades_path))
                 cancels_dd = self.format_dd(dd.read_csv(cancels_path))
+                midprices_dd = self.format_midprice_dd(dd.read_csv(midprices_path))
 
-                return_list.append((orders_dd, trades_dd, cancels_dd))
+                return_list.append((orders_dd, trades_dd, cancels_dd, midprices_dd))
             except EmptyDataError:
                 self.logger.info("Failed to load " + directory)
+                print("Failed to load " + directory)
 
         return return_list
+
+    @staticmethod
+    def get_dirs_in_dir(data_root):
+        dirs = next(os.walk(data_root))[1]
+        return dirs
+
+    @staticmethod
+    def get_files_in_dir(data_root):
+        dirs = next(os.walk(data_root))[2]
+        return dirs
 
     def load_feed(self, root, start_time: datetime, end_time: datetime, product: str) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""

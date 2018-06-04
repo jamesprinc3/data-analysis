@@ -87,7 +87,7 @@ class Backtest:
                 "Simulation preparation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
             return False
 
-    @concurrent.process(timeout=100)
+    @concurrent.process(timeout=300)
     def run_simulation(self):
         self.logger.info("Running simulations")
         bash_command = "java -jar " + self.config.jar_path + " " + self.config.sim_config_path
@@ -142,14 +142,16 @@ class Backtest:
     @concurrent.process(timeout=None)
     def validate_analyses(self, prog_start: datetime.datetime):
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
-        validation_data = self.get_validation_data(sim_analysis)
+        trade_price_validation_data = self.get_trade_validation_data(sim_analysis)
+        mid_price_validation_data = self.get_midprice_validation_data(sim_analysis)
         monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
 
         correlation_file_path = self.config.correlation_root + prog_start.isoformat() + ".csv"
-        self.append_final_prices(correlation_file_path, validation_data[0], validation_data[1],
-                                 validation_data[2], validation_data[5])
-        self.graph_real_prices_with_simulated_confidence_intervals(*validation_data)
-        self.graph_monte_carlo_data(validation_data[5].iloc[0], monte_carlo_data)
+        self.append_final_prices(correlation_file_path, trade_price_validation_data[0], trade_price_validation_data[1],
+                                 trade_price_validation_data[2], trade_price_validation_data[5])
+        self.graph_trade_prices(*trade_price_validation_data)
+        self.graph_mid_prices(*mid_price_validation_data)
+        self.graph_monte_carlo_data(trade_price_validation_data[5].iloc[0], monte_carlo_data)
 
     def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
         start_price = real_prices.dropna().iloc[0]
@@ -174,10 +176,29 @@ class Backtest:
                  ]) + "\n"
             fd.write(row)
 
-    def get_validation_data(self, sim_analysis: SimulationAnalysis):
+    def get_trade_validation_data(self, sim_analysis: SimulationAnalysis):
         times = self.get_times()
 
-        confidence_intervals = sim_analysis.calculate_confidence_at_times(times)
+        confidence_intervals = sim_analysis.calculate_trade_confidence_at_times(times)
+        self.logger.info(confidence_intervals)
+
+        real_times, real_prices = self.__fetch_real_data()
+
+        start_price = real_prices.iloc[0]
+
+        # Add the initial price and then convert to numpy arrays
+        sim_means = np.array([start_price] + list(map(lambda lu: (lu[0] + lu[1]) / 2, confidence_intervals.values())))
+        sim_ub = np.array([start_price] + list(map(lambda x: x[1], confidence_intervals.values())))
+        sim_lb = np.array([start_price] + list(map(lambda x: x[0], confidence_intervals.values())))
+        times = [0] + times
+
+        return sim_means, sim_ub, sim_lb, times, real_times, real_prices
+
+    #TODO: reduce duplication
+    def get_midprice_validation_data(self, sim_analysis: SimulationAnalysis):
+        times = self.get_times()
+
+        confidence_intervals = sim_analysis.calculate_midprice_confidence_at_times(times)
         self.logger.info(confidence_intervals)
 
         real_times, real_prices = self.__fetch_real_data()
@@ -198,8 +219,8 @@ class Backtest:
                            self.config.xinterval))
         return times
 
-    def graph_real_prices_with_simulated_confidence_intervals(self, sim_means, sim_ub, sim_lb, times, real_times,
-                                                              real_prices):
+    def graph_trade_prices(self, sim_means, sim_ub, sim_lb, times, real_times,
+                           real_prices):
         self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
         self.config.plt.xlabel("Time (seconds)")
         self.config.plt.ylabel("Price ($)")
@@ -208,21 +229,28 @@ class Backtest:
         self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
                                                        color_mean='k',
                                                        color_shading='k')
-
-        if self.config.save_graphs:
-            plot_root = self.config.graphs_root + self.sim_st.date().isoformat()
-            # Ensure directory exists
-            pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
-
-            # Save plot
-            plot_path = plot_root + self.__get_plot_title() + ".png"
-            self.config.plt.savefig(plot_path, dpi=600, transparent=True)
-            self.logger.info("Saved plot to: " + plot_path)
-
-        if self.config.show_graphs:
-            self.config.plt.show()
+        self.output_graph(self.__get_plot_title() + "-tradeprices")
 
         self.config.plt.close()
+
+    def output_graph(self, title):
+        if self.config.graph_mode == "save":
+            plot_root = self.config.graphs_root + self.sim_st.date().isoformat()
+
+            # Save plot
+            self.save_figure(plot_root, title)
+        if self.config.graph_mode == "show":
+            self.config.plt.title(title)
+            self.config.plt.show()
+
+    def save_figure(self, plot_root, title):
+        # Ensure directory exists
+        pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
+
+        plot_path = plot_root + title + ".png"
+
+        self.config.plt.savefig(plot_path, dpi=600, transparent=True)
+        self.logger.info("Saved plot to: " + plot_path)
 
     def __get_plot_title(self):
         plot_path = self.sim_st.time().isoformat() \
@@ -267,7 +295,7 @@ class Backtest:
 
         for index in range(0, len(sim_analysis.all_sims)):
             sim = sim_analysis.all_sims[index]
-            _, trades_dd, _ = sim
+            _, trades_dd, _, _ = sim
             trades_df = trades_dd.compute()
             for seconds in times:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
@@ -286,4 +314,18 @@ class Backtest:
         for _, prices_for_sim in monte_carlo_data.items():
             self.config.plt.plot(times, prices_for_sim)
 
-        self.config.plt.show()
+        self.output_graph(self.__get_plot_title() + "-monte")
+
+    def graph_mid_prices(self, sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times,
+                         real_prices):
+        self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
+        self.config.plt.xlabel("Time (seconds)")
+        self.config.plt.ylabel("Price ($)")
+
+        # plot the data
+        self.graphing.plot_mean_and_ci_and_real_values(sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times, real_prices,
+                                                       color_mean='k',
+                                                       color_shading='k')
+        self.output_graph(self.__get_plot_title() + "-midprices")
+
+        self.config.plt.close()

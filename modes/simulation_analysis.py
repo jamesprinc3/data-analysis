@@ -69,24 +69,49 @@ class SimulationAnalysis:
         cls.logger.info("Confidence data dumped to: " + dst)
 
     # TODO: fix some of these awful names, such as "seconds"
-    def calculate_confidence_at_times(self, seconds_list: List[int], level=0.95):
-        time_prices_dict = self.extract_prices_at_times(self.all_sims, seconds_list)
+    def calculate_trade_confidence_at_times(self, seconds_list: List[int], level=0.95):
+        time_prices_dict = self.extract_trade_prices_at_times(self.all_sims, seconds_list)
         time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
 
         self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
 
         return time_confidence_dict
 
-    def extract_prices_at_times(self, all_sims, seconds_list):
+    # TODO: reduce duplication
+    def calculate_midprice_confidence_at_times(self, seconds_list: List[int], level=0.95):
+        time_prices_dict = self.extract_mid_prices_at_times(self.all_sims, seconds_list)
+        time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
+
+        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
+
+        return time_confidence_dict
+
+    @staticmethod
+    def extract_trade_prices_at_times(all_sims, seconds_list):
         time_prices_dict = {}
         for seconds in seconds_list:
             time_prices_dict[seconds] = []
         sim_index = 0
         for sim in all_sims:
-            _, trades_dd, _ = sim
+            _, trades_dd, _, _ = sim
             trades_df = trades_dd.compute()
             for seconds in seconds_list:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
+                time_prices_dict[seconds].append(price)
+            sim_index += 1
+        return time_prices_dict
+
+    @staticmethod
+    def extract_mid_prices_at_times(all_sims, seconds_list):
+        time_prices_dict = {}
+        for seconds in seconds_list:
+            time_prices_dict[seconds] = []
+        sim_index = 0
+        for sim in all_sims:
+            _, _, _, midprices_dd = sim
+            midprices_df = midprices_dd.compute()
+            for seconds in seconds_list:
+                price = DataUtils.get_last_price_before(midprices_df, seconds)
                 time_prices_dict[seconds].append(price)
             sim_index += 1
         return time_prices_dict
