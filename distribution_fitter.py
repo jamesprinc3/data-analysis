@@ -2,7 +2,7 @@
 
 import warnings
 
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import pandas as pd
 import scipy.stats as st
@@ -171,6 +171,7 @@ class DistributionFitter:
 
     @staticmethod
     def plot_data_with_distribution(data, dist, fit_params, data_desc: str, xlabel: str, bins=200, show=False):
+        import matplotlib.pyplot as plt
         plt.figure(figsize=(12, 8))
         pdf = DistributionFitter.make_pdf(dist, fit_params)
         ax = pdf.plot(lw=2, label='PDF', legend=True)
