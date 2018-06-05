@@ -31,8 +31,8 @@ class Backtest:
 
         self.sim_root = self.config.sim_root + sim_st.date().isoformat() + "/" + sim_st.time().isoformat() + "/"
 
-        self.params_path = self.config.params_path + sim_st.date().isoformat() + "/"
-        pathlib.Path(self.params_path).mkdir(parents=True, exist_ok=True)
+        self.params_root = self.config.params_root + sim_st.date().isoformat() + "/"
+        pathlib.Path(self.params_root).mkdir(parents=True, exist_ok=True)
 
         sim_logs_dir = self.config.sim_logs_root + sim_st.date().isoformat() + "/"
 
@@ -56,7 +56,7 @@ class Backtest:
 
     def prepare_simulation(self):
         try:
-            params_path = self.params_path \
+            params_path = self.params_root \
                           + self.sim_st.time().isoformat() + ".json"
             if self.config.use_cached_params and os.path.isfile(params_path):
                 self.logger.info("Params file exists, therefore we're using it! " + params_path)
@@ -64,7 +64,7 @@ class Backtest:
                 self.logger.info("Not using params cache" + "\nGenerating params...")
                 # Get parameters
                 orders_df, trades_df, cancels_df = self.all_sampling_data
-                params = Sample.generate_order_params(trades_df, orders_df, cancels_df)
+                params = Sample.generate_sim_params(orders_df, trades_df, cancels_df)
 
                 # Save params (that can be reused!)
                 Writer.json_to_file(params, params_path)
@@ -83,7 +83,7 @@ class Backtest:
             return True
         except Exception as e:
             self.logger.error(
-                "Simulation preparation failed, skipping, at: " + sim_st.isoformat() + "\nError was\n" + str(e))
+                "Simulation preparation failed, skipping, at: " + self.sim_st.isoformat() + "\nError was\n" + str(e))
             return False
 
     @concurrent.process(timeout=300)
@@ -144,9 +144,15 @@ class Backtest:
         mid_price_validation_data = self.get_midprice_validation_data(sim_analysis)
         monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
 
-        correlation_file_path = self.config.correlation_root + prog_start.isoformat() + ".csv"
-        self.append_final_prices(correlation_file_path, trade_price_validation_data[0], trade_price_validation_data[1],
+        trade_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-trade.csv"
+        self.append_final_prices(trade_correlation_file_path, trade_price_validation_data[0],
+                                 trade_price_validation_data[1],
                                  trade_price_validation_data[2], trade_price_validation_data[5])
+        midprice_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-midprice.csv"
+        self.append_final_prices(midprice_correlation_file_path, mid_price_validation_data[0],
+                                 mid_price_validation_data[1],
+                                 mid_price_validation_data[2], mid_price_validation_data[5])
+
         self.graph_trade_prices(*trade_price_validation_data)
         self.graph_mid_prices(*mid_price_validation_data)
         self.graph_monte_carlo_data(trade_price_validation_data[5].iloc[0], monte_carlo_data)

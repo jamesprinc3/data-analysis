@@ -9,11 +9,11 @@ from logging.config import fileConfig
 import dask.dataframe as dd
 from pebble import concurrent
 
-from config import Config
+from backtest_config import BacktestConfig
 from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
 from modes.backtest import Backtest
-from modes.real_analysis import RealAnalysis
+from modes.sample import Sample
 from modes.simulation_analysis import SimulationAnalysis
 from orderbook import OrderBook
 from output.writer import Writer
@@ -153,21 +153,16 @@ def run_validation_async(backtest, sim_success):
         return None
 
 
-def real_mode(st: datetime.datetime = None):
-    if not st:
-        st = datetime.datetime.strptime(config['data']['start_time'], "%Y-%m-%dT%H:%M:%S")
-
-    sampling_window_start_time = st - datetime.timedelta(seconds=config.sampling_window)
-    sampling_window_end_time = st
+def sample_mode():
+    sampling_window_start_time = config.start_time - datetime.timedelta(seconds=config.sampling_window)
+    sampling_window_end_time = config.start_time
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, sampling_window_start_time,
                                                                   sampling_window_end_time, config.product)
-    real_analysis = RealAnalysis(orders_df, trades_df, cancels_df, "Backtest " + config.product)
+    params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, graph=True)
+    print(params)
+    Writer.json_to_file(params, config.params_root + "params.json")
 
-    if config.fit_distributions and config.params_path:
-        params = generate_order_params(real_analysis.trades_df, real_analysis.orders_df, real_analysis.cancels_df)
-        Writer.json_to_file(params, config.params_path)
-    if config.graphs_root:
-        real_analysis.generate_graphs(config.graphs_root)
+
 
 
 def simulation_mode(st: datetime.datetime = None):
@@ -202,7 +197,7 @@ if __name__ == "__main__":
 
     conf = configparser.ConfigParser()
     conf.read(args.config)
-    config = Config(conf)
+    config = BacktestConfig(conf)
 
     prog_start = datetime.datetime.now()
 
@@ -220,7 +215,7 @@ if __name__ == "__main__":
     if config.mode == "backtest":
         backtest_mode(config.start_time)
     elif config.mode == "real":
-        real_mode()
+        sample_mode()
     elif config.mode == "simulation":
         simulation_mode()
     elif config.mode == "orderbook":

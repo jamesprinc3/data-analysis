@@ -1,8 +1,8 @@
 import logging
 from typing import List
 
-import pebble
 import pandas as pd
+import pebble
 
 from correlations import Correlations
 from data.data_splitter import DataSplitter
@@ -24,8 +24,8 @@ class Sample:
             cls.logger.error(str(e))
 
     @classmethod
-    def generate_order_params(cls, trades_df, orders_df, cancels_df):
-        cls.check_has_elements([trades_df, orders_df, cancels_df])
+    def generate_sim_params(cls, orders_df, trades_df, cancels_df, graph=False):
+        cls.check_has_elements([orders_df, trades_df, cancels_df])
 
         try:
             params = {}
@@ -41,11 +41,12 @@ class Sample:
                 # Find distributions using different procs
                 relative_order_price_distributions = pool.schedule(DataTransformer.price_distributions,
                                                                    (trades_df, orders_df,),
-                                                                   dict(relative=True))
+                                                                   dict(relative=True, graph=graph))
 
                 # Buy/sell Price
                 order_price_distributions = pool.schedule(DataTransformer.price_distributions,
-                                                          (trades_df, orders_df,), dict(relative=False))
+                                                          (trades_df, orders_df,),
+                                                          dict(relative=False, graph=True))
 
                 # Buy/sell price Cancellation
                 relative_cancel_price_distributions = pool.schedule(DataTransformer.price_distributions,

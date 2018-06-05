@@ -3,7 +3,7 @@ import pathlib
 from configparser import ConfigParser
 
 
-class Config:
+class BacktestConfig:
 
     def __init__(self, config: ConfigParser):
         """Parse the config file and apply the correct typing, etc to it"""
@@ -23,8 +23,8 @@ class Config:
         self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
 
         self.graphs_root = root_path + config['part_paths']['graphs_output_root']
-        self.params_path = root_path + config['part_paths']['params_output_root']
-        pathlib.Path(self.params_path).mkdir(parents=True, exist_ok=True)
+        self.params_root = root_path + config['part_paths']['params_output_root']
+        pathlib.Path(self.params_root).mkdir(parents=True, exist_ok=True)
         self.sim_logs_root = root_path + config['part_paths']['sim_logs_root']
 
         self.orderbook_output_root = root_path + config['part_paths']['orderbook_output_root']

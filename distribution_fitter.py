@@ -1,10 +1,11 @@
 # Some methods in this file were inspired by: https://stackoverflow.com/a/37616966
 
 import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-import matplotlib
 
 
 class DistributionFitter:
@@ -136,7 +137,8 @@ class DistributionFitter:
 
         return best_params
 
-    def make_pdf(self, dist, params, size=10000):
+    @staticmethod
+    def make_pdf(dist, params, size=10000):
         """Generate distributions' Probability Distribution Function"""
 
         # Separate parts of parameters
@@ -167,14 +169,18 @@ class DistributionFitter:
         # Display
         self.plot_data_with_distribution(data, best_dist, best_fit_params, data_desc, xlabel, bins=200)
 
-    def plot_data_with_distribution(self, data, dist, fit_params, data_desc: str, xlabel: str, bins=200):
-        self.config.plt.figure(figsize=(12, 8))
-        pdf = self.make_pdf(dist, fit_params)
+    @staticmethod
+    def plot_data_with_distribution(data, dist, fit_params, data_desc: str, xlabel: str, bins=200, show=False):
+        plt.figure(figsize=(12, 8))
+        pdf = DistributionFitter.make_pdf(dist, fit_params)
         ax = pdf.plot(lw=2, label='PDF', legend=True)
         data.plot(kind='hist', bins=bins, density=True, alpha=0.5, label='Data', legend=True, ax=ax)
 
         ax.set_title(data_desc)
         ax.set_xlabel(xlabel)
+
+        if show:
+            plt.show()
 
     @staticmethod
     def get_distribution_string(best_fit, best_fit_params):

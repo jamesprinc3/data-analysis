@@ -1,8 +1,8 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats
+import numpy as np
+import pandas as pd
 import scipy.special
+import scipy.stats
 
 
 class Evaluation:
@@ -31,6 +31,15 @@ class Evaluation:
         return maximum, minimum
 
     @staticmethod
+    def get_direction(final_lower, final_upper, start_price):
+        if final_lower > start_price:
+            return 1
+        elif final_upper < start_price:
+            return -1
+        else:
+            return 0
+
+    @staticmethod
     def correlate(df, window: int = 10):
         plt = Evaluation.get_plt(window)
 
@@ -46,6 +55,11 @@ class Evaluation:
 
         df['rp_dir'] = np.sign(df['rp_diff'])
         df['sp_dir'] = np.sign(df['sp_diff'])
+
+        # df.apply(lambda row: Evaluation.get_direction(row['last_sim_price_lb'],
+        # row['last_sim_price_ub'],
+        # row['start_price']))
+
 
         print(df)
 
