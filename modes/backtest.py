@@ -2,26 +2,25 @@ import csv
 import datetime
 import logging
 import os
+import pathlib
 import signal
 import subprocess
 import time
 from datetime import timedelta
 
+import numpy as np
 from pebble import concurrent
 
-import numpy as np
-import pathlib
-
-from modes.sample import Sample
-from modes.simulation_analysis import SimulationAnalysis
 from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
 from data.data_utils import DataUtils
+from modes.sample import Sample
+from modes.simulation_analysis import SimulationAnalysis
 from orderbook import OrderBook, reconstruct_orderbook
 from output.graphing import Graphing
+from output.writer import Writer
 from sim_config import SimConfig
 from stats import Statistics
-from output.writer import Writer
 
 
 class Backtest:
@@ -139,7 +138,6 @@ class Backtest:
             }}
         return sim_config
 
-    @concurrent.process(timeout=None)
     def validate_analyses(self, prog_start: datetime.datetime):
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         trade_price_validation_data = self.get_trade_validation_data(sim_analysis)
@@ -198,20 +196,22 @@ class Backtest:
     def get_midprice_validation_data(self, sim_analysis: SimulationAnalysis):
         times = self.get_times()
 
-        confidence_intervals = sim_analysis.calculate_midprice_confidence_at_times(times)
-        self.logger.info(confidence_intervals)
+        time_prices_dict = sim_analysis.extract_mid_prices_at_times(sim_analysis.all_sims, times)
+
+        percentiles = sim_analysis.calculate_midprice_percentiles(time_prices_dict)
+        self.logger.info(percentiles)
 
         real_times, real_prices = self.__fetch_real_data()
 
         start_price = real_prices.iloc[0]
 
         # Add the initial price and then convert to numpy arrays
-        sim_means = np.array([start_price] + list(map(lambda lu: (lu[0] + lu[1]) / 2, confidence_intervals.values())))
-        sim_ub = np.array([start_price] + list(map(lambda x: x[1], confidence_intervals.values())))
-        sim_lb = np.array([start_price] + list(map(lambda x: x[0], confidence_intervals.values())))
+        sim_medians = np.array([start_price] + list(map(lambda lmu: lmu[1], percentiles.values())))
+        sim_upper = np.array([start_price] + list(map(lambda lmu: lmu[2], percentiles.values())))
+        sim_lower = np.array([start_price] + list(map(lambda lmu: lmu[0], percentiles.values())))
         times = [0] + times
 
-        return sim_means, sim_ub, sim_lb, times, real_times, real_prices
+        return sim_medians, sim_upper, sim_lower, times, real_times, real_prices
 
     def get_times(self):
         times = list(range(self.config.xinterval,
@@ -229,13 +229,13 @@ class Backtest:
         self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
                                                        color_mean='k',
                                                        color_shading='k')
-        self.output_graph(self.__get_plot_title() + "-tradeprices")
+        self.output_graph("tradeprices", self.__get_plot_title())
 
         self.config.plt.close()
 
-    def output_graph(self, title):
+    def output_graph(self, category, title):
         if self.config.graph_mode == "save":
-            plot_root = self.config.graphs_root + self.sim_st.date().isoformat()
+            plot_root = self.config.graphs_root + category + "/" + self.sim_st.date().isoformat() + "/"
 
             # Save plot
             self.save_figure(plot_root, title)
@@ -297,6 +297,9 @@ class Backtest:
             sim = sim_analysis.all_sims[index]
             _, trades_dd, _, _ = sim
             trades_df = trades_dd.compute()
+            if len(trades_df) == 0:
+                continue
+            trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
             for seconds in times:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
                 sim_prices[index].append(price)
@@ -312,9 +315,11 @@ class Backtest:
         times = self.get_times()
 
         for _, prices_for_sim in monte_carlo_data.items():
+            if len(prices_for_sim) == 0:
+                continue
             self.config.plt.plot(times, prices_for_sim)
 
-        self.output_graph(self.__get_plot_title() + "-monte")
+        self.output_graph("monte", self.__get_plot_title())
 
     def graph_mid_prices(self, sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times,
                          real_prices):
@@ -326,6 +331,6 @@ class Backtest:
         self.graphing.plot_mean_and_ci_and_real_values(sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times, real_prices,
                                                        color_mean='k',
                                                        color_shading='k')
-        self.output_graph(self.__get_plot_title() + "-midprices")
+        self.output_graph("midprices", self.__get_plot_title())
 
         self.config.plt.close()

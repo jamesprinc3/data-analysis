@@ -4,20 +4,17 @@ import datetime
 import logging
 import pathlib
 import time
-import traceback
 from logging.config import fileConfig
-from operator import itemgetter
 
 import dask.dataframe as dd
-import matplotlib
-from pympler import tracker
+from pebble import concurrent
 
-from modes.backtest import Backtest
-from modes.real_analysis import RealAnalysis
-from modes.simulation_analysis import SimulationAnalysis
 from config import Config
 from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
+from modes.backtest import Backtest
+from modes.real_analysis import RealAnalysis
+from modes.simulation_analysis import SimulationAnalysis
 from orderbook import OrderBook
 from output.writer import Writer
 
@@ -102,16 +99,19 @@ def backtest_mode(st: datetime.datetime = None):
         # Wait for previous validation to finish
         wait_on_validation(validate_future)
         # Set off validation for previous iteration
-        validate_future = run_validation(previous_backtest, sim_success)
+        validate_future = run_validation_async(previous_backtest, sim_success)
 
         # Run this current iteration's simulation async
         if current_backtest is not None and prep_success:
             sim_future = current_backtest.run_simulation()
 
+    # Wait for previous validation to finish
+    wait_on_validation(validate_future)
+
     sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 
-    validate_future = run_validation(current_backtest, sim_success)
-    wait_on_validation(validate_future)
+    if sim_success:
+        current_backtest.validate_analyses(prog_start)
 
 
 def wait_on_simulation(sim_future, sim_st, sim_success):
@@ -138,10 +138,15 @@ def wait_on_validation(validate_future):
         logger.error("Error in validation: " + str(e))
 
 
-def run_validation(backtest, sim_success):
+def run_validation_async(backtest, sim_success):
     if sim_success:
         logger.info("Starting validation in other proc")
-        validate_future = backtest.validate_analyses(prog_start)
+
+        @concurrent.process
+        def async(p_start):
+            backtest.validate_analyses(p_start)
+
+        validate_future = async(prog_start)
         logger.info("Validation started")
         return validate_future
     else:

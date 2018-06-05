@@ -135,7 +135,7 @@ class Graphing:
 
         # plot the shaded range of the confidence intervals
         self.config.plt.fill_between(times, ub, lb, color=color_shading, alpha=.5,
-                         label="Simulated 95% Confidence Interval")
+                                     label="Simulated 2.5th and 97.5th percentiles")
 
         # plot the mean on top
         self.config.plt.plot(times, mean, color_mean, label="Simulated Mean")

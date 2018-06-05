@@ -101,6 +101,10 @@ class OrderBook:
             cls.logger.error("Failed to save orderbook to " + file_path + " exception: " + str(e))
             raise e
 
+    @staticmethod
+    def graph_orderbook(ob):
+        pass
+
 
 def reconstruct_orderbook(all_ob_data, config, sim_st, logger):
     try:

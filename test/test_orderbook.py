@@ -1,6 +1,7 @@
 import datetime
-import pandas as pd
 from unittest import TestCase
+
+import pandas as pd
 
 from data.data_loader import DataLoader
 from orderbook import OrderBook
@@ -54,3 +55,9 @@ class TestLoadOrderbook(TestCase):
             "/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
 
         OrderBook.check_ob_valid(ob_state_df)
+
+    def test_graph_orderbook(self):
+        ob_state_df = OrderBook().load_orderbook_state(
+            "/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
+
+        OrderBook.graph_orderbook(ob_state_df)

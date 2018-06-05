@@ -4,8 +4,7 @@ import math
 import pathlib
 from typing import List
 
-import numpy as np
-import scipy.stats as st
+import pandas as pd
 
 from data.data_loader import DataLoader
 from data.data_utils import DataUtils
@@ -71,36 +70,47 @@ class SimulationAnalysis:
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_trade_confidence_at_times(self, seconds_list: List[int], level=0.95):
         time_prices_dict = self.extract_trade_prices_at_times(self.all_sims, seconds_list)
-        time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
+        time_confidence_dict = self.calculate_percentiles(time_prices_dict, level)
 
         self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
 
         return time_confidence_dict
 
     # TODO: reduce duplication
-    def calculate_midprice_confidence_at_times(self, seconds_list: List[int], level=0.95):
-        time_prices_dict = self.extract_mid_prices_at_times(self.all_sims, seconds_list)
-        time_confidence_dict = self.calculate_confidences(time_prices_dict, level)
+    def calculate_midprice_percentiles(self, time_prices_dict, level=0.95):
+        time_confidence_dict = self.calculate_percentiles(time_prices_dict, level)
 
         self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
 
         return time_confidence_dict
 
     @staticmethod
-    def extract_trade_prices_at_times(all_sims, seconds_list):
+    def extract_prices_at_times(prices_dfs: List[pd.DataFrame], seconds_list):
         time_prices_dict = {}
         for seconds in seconds_list:
             time_prices_dict[seconds] = []
         sim_index = 0
-        for sim in all_sims:
-            _, trades_dd, _, _ = sim
-            trades_df = trades_dd.compute()
+        for price_df in prices_dfs:
             for seconds in seconds_list:
-                price = DataUtils.get_last_price_before(trades_df, seconds)
+                price = DataUtils.get_last_price_before(price_df, seconds)
                 time_prices_dict[seconds].append(price)
             sim_index += 1
         return time_prices_dict
 
+    @staticmethod
+    def extract_trade_prices_at_times(all_sims, seconds_list):
+        prices_dfs = []
+        for sim in all_sims:
+            _, trades_dd, _, _ = sim
+            trades_df = trades_dd.compute()
+            if len(trades_df) == 0:
+                continue
+            trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
+            prices_dfs.append(trades_df)
+
+        return SimulationAnalysis.extract_prices_at_times(prices_dfs, seconds_list)
+
+    # TODO: refactor this to use extract_prices_at_times function
     @staticmethod
     def extract_mid_prices_at_times(all_sims, seconds_list):
         time_prices_dict = {}
@@ -110,23 +120,36 @@ class SimulationAnalysis:
         for sim in all_sims:
             _, _, _, midprices_dd = sim
             midprices_df = midprices_dd.compute()
+            midprices_df['time'] = DataUtils().get_times_in_seconds_after_start(midprices_df['time'])
             for seconds in seconds_list:
                 price = DataUtils.get_last_price_before(midprices_df, seconds)
                 time_prices_dict[seconds].append(price)
             sim_index += 1
         return time_prices_dict
 
+    @staticmethod
+    def get_percentiles(data, level=0.025):
+        print("Getting percentiles")
+        n = len(data)
+        data.sort()
+
+        lower = data[int(n * level)]
+        median = data[int(n / 2)]
+        upper = data[int(n * (1 - level))]
+
+        return lower, median, upper
+
     @classmethod
-    def calculate_confidences(cls, time_prices_dict, level: float):
-        time_confidence_dict = {}
+    def calculate_percentiles(cls, time_prices_dict, level: float):
+        time_percentiles_dict = {}
         num_nans = {}
         low_high = {}
         for time_in_seconds, prices in time_prices_dict.items():
             filt_prices = list(filter(lambda p: not math.isnan(p), prices))
             low_high[time_in_seconds] = (min(filt_prices), max(filt_prices))
             num_nans[time_in_seconds] = len(prices) - len(filt_prices)
-            interval = st.t.interval(level, len(filt_prices) - 1, loc=np.mean(filt_prices), scale=st.sem(filt_prices))
-            time_confidence_dict[time_in_seconds] = interval
+            interval = SimulationAnalysis.get_percentiles(filt_prices)
+            time_percentiles_dict[time_in_seconds] = interval
 
         for key in num_nans:
             cls.logger.info(str(key) + " has " + str(num_nans[key]) + " NaNs")
@@ -134,7 +157,7 @@ class SimulationAnalysis:
         for key, lh in low_high.items():
             cls.logger.info(str(key) + " low, high: " + str(lh))
 
-        for key, intervals in time_confidence_dict.items():
-            cls.logger.info(str(key) + " has confidence width: " + str(abs(intervals[0] - intervals[1])))
+        for key, intervals in time_percentiles_dict.items():
+            cls.logger.info(str(key) + " has percentile width: " + str(abs(intervals[0] - intervals[2])))
 
-        return time_confidence_dict
+        return time_percentiles_dict

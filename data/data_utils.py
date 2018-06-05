@@ -1,5 +1,6 @@
-import dask.dataframe as dd
 import math
+
+import dask.dataframe as dd
 import pandas as pd
 
 
@@ -23,8 +24,7 @@ class DataUtils:
         # series = pd.to_datetime(series, unit='ns')
         start_time = series.iloc[0]
         # logger.debug(series)
-        series = series.apply(lambda x: (x - start_time))
-        series = series.apply(lambda x: x.total_seconds())
+        series = series.apply(lambda x: (x - start_time).total_seconds())
 
         # logger.debug(series)
 
@@ -40,10 +40,7 @@ class DataUtils:
         if df.empty:
             return math.nan
 
-        local_df = df.copy()
-        local_df['time'] = DataUtils().get_times_in_seconds_after_start(local_df['time'])
-        # logger.debug(local_df['time'])
-        trades_before = local_df[local_df['time'] < seconds]
+        trades_before = df[df['time'] < seconds]
         return trades_before['price'].iloc[-1]
 
     def remove_tails(self, data: dd, std_devs: int, sample_size: int = 10000):
