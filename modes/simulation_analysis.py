@@ -70,19 +70,19 @@ class SimulationAnalysis:
     # TODO: fix some of these awful names, such as "seconds"
     def calculate_trade_confidence_at_times(self, seconds_list: List[int], level=0.95):
         time_prices_dict = self.extract_trade_prices_at_times(self.all_sims, seconds_list)
-        time_confidence_dict = self.calculate_percentiles(time_prices_dict, level)
+        time_percentiles_dict = self.calculate_percentiles(time_prices_dict, level)
 
-        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
+        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_percentiles_dict)
 
-        return time_confidence_dict
+        return time_percentiles_dict
 
     # TODO: reduce duplication
     def calculate_midprice_percentiles(self, time_prices_dict, level=0.95):
-        time_confidence_dict = self.calculate_percentiles(time_prices_dict, level)
+        time_percentiles_dict = self.calculate_percentiles(time_prices_dict, level)
 
-        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_confidence_dict)
+        self.dump_confidence_data(self.confidence_path, time_prices_dict, time_percentiles_dict)
 
-        return time_confidence_dict
+        return time_percentiles_dict
 
     @staticmethod
     def extract_prices_at_times(prices_dfs: List[pd.DataFrame], seconds_list):
@@ -101,7 +101,7 @@ class SimulationAnalysis:
     def extract_trade_prices_at_times(all_sims, seconds_list):
         prices_dfs = []
         for sim in all_sims:
-            _, trades_dd, _, _ = sim
+            trades_dd = sim[1]
             trades_df = trades_dd.compute()
             if len(trades_df) == 0:
                 continue
@@ -118,7 +118,7 @@ class SimulationAnalysis:
             time_prices_dict[seconds] = []
         sim_index = 0
         for sim in all_sims:
-            _, _, _, midprices_dd = sim
+            midprices_dd = sim[3]
             midprices_df = midprices_dd.compute()
             midprices_df['time'] = DataUtils().get_times_in_seconds_after_start(midprices_df['time'])
             for seconds in seconds_list:
@@ -129,7 +129,6 @@ class SimulationAnalysis:
 
     @staticmethod
     def get_percentiles(data, level=0.025):
-        print("Getting percentiles")
         n = len(data)
         data.sort()
 

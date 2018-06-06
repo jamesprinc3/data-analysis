@@ -144,6 +144,11 @@ class Backtest:
         mid_price_validation_data = self.get_midprice_validation_data(sim_analysis)
         monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
 
+        if self.config.spread:
+            best_bid_data = self.get_bid_data(sim_analysis)
+            best_ask_data = self.get_ask_data(sim_analysis)
+            self.graphing.plot_spread(best_bid_data, best_ask_data)
+
         trade_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-trade.csv"
         self.append_final_prices(trade_correlation_file_path, trade_price_validation_data[0],
                                  trade_price_validation_data[1],
@@ -240,13 +245,12 @@ class Backtest:
         self.config.plt.close()
 
     def output_graph(self, category, title):
+        self.config.plt.title(title + " " + category)
+
         if self.config.graph_mode == "save":
             plot_root = self.config.graphs_root + category + "/" + self.sim_st.date().isoformat() + "/"
-
-            # Save plot
             self.save_figure(plot_root, title)
         if self.config.graph_mode == "show":
-            self.config.plt.title(title)
             self.config.plt.show()
 
     def save_figure(self, plot_root, title):
@@ -301,7 +305,7 @@ class Backtest:
 
         for index in range(0, len(sim_analysis.all_sims)):
             sim = sim_analysis.all_sims[index]
-            _, trades_dd, _, _ = sim
+            trades_dd = sim[1]
             trades_df = trades_dd.compute()
             if len(trades_df) == 0:
                 continue
@@ -340,3 +344,29 @@ class Backtest:
         self.output_graph("midprices", self.__get_plot_title())
 
         self.config.plt.close()
+
+    def get_bid_data(self, sim_analysis):
+        ret = {}
+
+        for index in range(0, len(sim_analysis.all_sims)):
+            sim = sim_analysis.all_sims[index]
+            best_bids_dd = sim[4]
+            best_bids_df = best_bids_dd.compute()
+            if len(best_bids_df) == 0:
+                continue
+            best_bids_df['time'] = DataUtils().get_times_in_seconds_after_start(best_bids_df['time'])
+            ret[index] = best_bids_df
+        return ret
+
+    def get_ask_data(self, sim_analysis):
+        ret = {}
+
+        for index in range(0, len(sim_analysis.all_sims)):
+            sim = sim_analysis.all_sims[index]
+            _, _, _, _, _, best_asks_dd = sim
+            best_bids_df = best_asks_dd.compute()
+            if len(best_bids_df) == 0:
+                continue
+            best_bids_df['time'] = DataUtils().get_times_in_seconds_after_start(best_bids_df['time'])
+            ret[index] = best_bids_df
+        return ret

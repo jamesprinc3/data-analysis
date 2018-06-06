@@ -46,13 +46,17 @@ class DataLoader:
                 trades_path: str = data_root + directory + "/trades.csv"
                 cancels_path: str = data_root + directory + "/cancels.csv"
                 midprices_path: str = data_root + directory + "/midprice.csv"
+                best_bids_path: str = data_root + directory + "/bestBids.csv"
+                best_asks_path: str = data_root + directory + "/bestAsks.csv"
 
                 orders_dd = self.format_dd(dd.read_csv(orders_path))
                 trades_dd = self.format_dd(dd.read_csv(trades_path))
                 cancels_dd = self.format_dd(dd.read_csv(cancels_path))
                 midprices_dd = self.format_midprice_dd(dd.read_csv(midprices_path))
+                best_bids_dd = self.format_midprice_dd(dd.read_csv(best_bids_path))
+                best_asks_dd = self.format_midprice_dd(dd.read_csv(best_asks_path))
 
-                return_list.append((orders_dd, trades_dd, cancels_dd, midprices_dd))
+                return_list.append((orders_dd, trades_dd, cancels_dd, midprices_dd, best_bids_dd, best_asks_dd))
             except EmptyDataError:
                 self.logger.info("Failed to load " + directory)
                 print("Failed to load " + directory)

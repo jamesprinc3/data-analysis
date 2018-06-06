@@ -44,6 +44,7 @@ class BacktestConfig:
         self.num_simulators = int(config['behaviour']['num_simulators'])
         self.num_traders = int(config['behaviour']['num_traders'])
 
+        self.spread = config['graphs'].getboolean('spread')
         self.ywindow = int(config['graphs']['ywindow'])
         self.xinterval = int(config['graphs']['xinterval'])
 

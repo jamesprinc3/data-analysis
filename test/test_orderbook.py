@@ -56,8 +56,8 @@ class TestLoadOrderbook(TestCase):
 
         OrderBook.check_ob_valid(ob_state_df)
 
-    def test_graph_orderbook(self):
+    def test_plot_orderbook(self):
         ob_state_df = OrderBook().load_orderbook_state(
             "/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
 
-        OrderBook.graph_orderbook(ob_state_df)
+        OrderBook.plot_orderbook(ob_state_df)

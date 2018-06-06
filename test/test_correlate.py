@@ -18,3 +18,9 @@ class TestCorrelation(TestCase):
         df = Evaluation.load("/Users/jamesprince/project-data/results/correlations/LTC-USD-100-percentiles.csv")
 
         Evaluation.correlate(df)
+
+    def test_correlate_100_percentiles_midprice(self):
+        df = Evaluation.load(
+            "/Users/jamesprince/project-data/results/correlations/LTC-USD-100-percentiles-midprice.csv")
+
+        Evaluation.correlate(df)

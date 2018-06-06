@@ -83,8 +83,7 @@ class Graphing:
         self.config.plt.xlabel('Time (s)')
         self.config.plt.ylabel('Price ($)')
 
-        ymax = mid + (ywindow / 2)
-        ymin = mid - (ywindow / 2)
+        ymin, ymax = self.get_y_bounds(mid, ywindow)
 
         self.config.plt.ylim(ymin, ymax)
         self.config.plt.xlim(0, self.config.simulation_window)
@@ -92,6 +91,13 @@ class Graphing:
         self.config.plt.title(self.data_description + " " + data_desc + ' price')
 
         return self.config.plt
+
+    @staticmethod
+    def get_y_bounds(mid, ywindow):
+        ymin = mid - (ywindow / 2)
+        ymax = mid + (ywindow / 2)
+
+        return ymin, ymax
 
     def graph_order_cancel_relative_price_distribution(self, feed_df):
         trades_df = DataSplitter.get_trades(feed_df)
@@ -141,3 +147,18 @@ class Graphing:
         self.config.plt.plot(times, mean, color_mean, label="Simulated Mean")
         self.config.plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         self.config.plt.legend(loc='upper right')
+
+    def plot_spread(self, best_bid_data, best_ask_data):
+        for index in best_bid_data.keys():
+            ymin, ymax = self.get_y_bounds(
+                (best_bid_data[index]['price'].iloc[0] + best_ask_data[index]['price'].iloc[0]) / 2,
+                self.config.ywindow)
+
+            self.config.plt.ylim(ymin, ymax)
+
+            self.config.plt.plot(best_bid_data[index]['time'], best_bid_data[index]['price'], 'g',
+                                 label='Best Bid Price')
+            self.config.plt.plot(best_ask_data[index]['time'], best_ask_data[index]['price'], 'r',
+                                 label='Best Ask Price')
+
+            self.config.plt.show()  # TODO: make this conform to graphing mode
