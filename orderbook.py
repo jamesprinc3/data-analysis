@@ -102,50 +102,67 @@ class OrderBook:
             raise e
 
     @staticmethod
-    def plot_orderbook(ob_state):
+    def plot_orderbook(ob_state, xwindow, log_y_scale=False):
         import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 8))
         bids = DataSplitter.get_side("buy", ob_state)
         asks = DataSplitter.get_side("sell", ob_state)
 
-        OrderBook.__plot_bid_side(bids, percentile=0.9)
-        OrderBook.__plot_ask_side(asks, percentile=0.9)
+        OrderBook.__plot_bid_side(bids, xwindow, percentile=0.9)
+        OrderBook.__plot_ask_side(asks, xwindow, percentile=0.9)
 
+        plt.title("Order Book")
+        plt.xlabel("Price")
+        plt.ylabel("Cumulative size")
+        if log_y_scale:
+            plt.yscale('log')
+        plt.legend()
         plt.show()
 
     @staticmethod
-    def __plot_bid_side(bids: pd.DataFrame, percentile=0.8):
+    def __plot_bid_side(bids: pd.DataFrame, xwindow, percentile=0.8):
         import matplotlib.pyplot as plt
+
+        xmin = bids['price'].max() - xwindow / 2
 
         bids.sort_values(by='price', ascending=False)
 
         running_total = 0
-        xs = []
-        ys = []
+        xs = [bids['price'].iloc[0]]
+        ys = [0]
         keep = int(percentile * (len(bids) - 1))
 
         for index in range(0, keep):
+            if bids['price'].iloc[index] < xmin:
+                break
+
             running_total += bids['size'].iloc[index]
             xs = xs + [bids['price'].iloc[index], bids['price'].iloc[index + 1]]
             ys = ys + [running_total, running_total]
 
-        plt.plot(xs, ys, 'g')
+        plt.plot(xs, ys, 'g', label="Bid Side")
 
     @staticmethod
-    def __plot_ask_side(asks, percentile=0.8):
+    def __plot_ask_side(asks, xwindow, percentile=0.8):
         import matplotlib.pyplot as plt
         asks.sort_values(by='price', ascending=True)
 
+        xmax = asks['price'].min() + xwindow / 2
+
         running_total = 0
-        xs = []
-        ys = []
+        xs = [asks['price'].iloc[0]]
+        ys = [0]
         keep = int(percentile * (len(asks) - 1))
 
         for index in range(0, keep):
+            if asks['price'].iloc[index] > xmax:
+                break
+
             running_total += asks['size'].iloc[index]
             xs = xs + [asks['price'].iloc[index], asks['price'].iloc[index + 1]]
             ys = ys + [running_total, running_total]
 
-        plt.plot(xs, ys, 'r')
+        plt.plot(xs, ys, 'r', label="Ask Side")
 
 
         pass

@@ -111,6 +111,7 @@ def backtest_mode(st: datetime.datetime = None):
     sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 
     if sim_success:
+        logger.info("starting final validation")
         current_backtest.validate_analyses(prog_start)
 
 
@@ -158,12 +159,10 @@ def sample_mode():
     sampling_window_end_time = config.start_time
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, sampling_window_start_time,
                                                                   sampling_window_end_time, config.product)
+
     params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, graph=True)
     print(params)
     Writer.json_to_file(params, config.params_root + "params.json")
-
-
-
 
 def simulation_mode(st: datetime.datetime = None):
     SimulationAnalysis(config, st).analyse()
@@ -214,7 +213,7 @@ if __name__ == "__main__":
 
     if config.mode == "backtest":
         backtest_mode(config.start_time)
-    elif config.mode == "real":
+    elif config.mode == "sample":
         sample_mode()
     elif config.mode == "simulation":
         simulation_mode()

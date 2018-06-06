@@ -144,7 +144,7 @@ class Graphing:
                                      label="Simulated 2.5th and 97.5th percentiles")
 
         # plot the mean on top
-        self.config.plt.plot(times, mean, color_mean, label="Simulated Mean")
+        self.config.plt.plot(times, mean, color_mean, label="Simulated Median (50th percentile")
         self.config.plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         self.config.plt.legend(loc='upper right')
 
@@ -154,11 +154,13 @@ class Graphing:
                 (best_bid_data[index]['price'].iloc[0] + best_ask_data[index]['price'].iloc[0]) / 2,
                 self.config.ywindow)
 
+            self.config.plt.figure(figsize=(12, 8))
             self.config.plt.ylim(ymin, ymax)
 
             self.config.plt.plot(best_bid_data[index]['time'], best_bid_data[index]['price'], 'g',
                                  label='Best Bid Price')
             self.config.plt.plot(best_ask_data[index]['time'], best_ask_data[index]['price'], 'r',
                                  label='Best Ask Price')
-
+            self.config.plt.legend()
+            self.config.plt.title("Spread")
             self.config.plt.show()  # TODO: make this conform to graphing mode

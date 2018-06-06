@@ -58,6 +58,8 @@ class TestLoadOrderbook(TestCase):
 
     def test_plot_orderbook(self):
         ob_state_df = OrderBook().load_orderbook_state(
-            "/Users/jamesprince/project-data/new-nimue-backup/orderbook/BTC-USD/2018-05-16T18:05:08.067228.json")
+            "/Users/jamesprince/project-data/data/raw-orderbooks/LTC-USD/2018-05-17T03:35:25.600377.json")
 
-        OrderBook.plot_orderbook(ob_state_df)
+        xwindow = 4
+
+        OrderBook.plot_orderbook(ob_state_df, xwindow, log_y_scale=False)

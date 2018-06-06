@@ -1,6 +1,7 @@
 import logging
 from typing import List
 
+import numpy as np
 import pandas as pd
 import pebble
 
@@ -23,6 +24,23 @@ class Sample:
         except Exception as e:
             cls.logger.error(str(e))
 
+    @staticmethod
+    def plot_cdf(x, cy, data_desc: str = ""):
+        import matplotlib.pyplot as plt
+
+        plt.plot(x, cy)
+        plt.title(data_desc + " cdf")
+
+        plt.show()
+
+    @staticmethod
+    def get_cdf_data(relative_prices):
+        x = relative_prices.sort_values()
+        # Normalise y axis
+        y = relative_prices / relative_prices.sum()
+        cy = np.cumsum(y)
+        return x, cy
+
     @classmethod
     def generate_sim_params(cls, orders_df, trades_df, cancels_df, graph=False):
         cls.check_has_elements([orders_df, trades_df, cancels_df])
@@ -32,11 +50,26 @@ class Sample:
             distributions = {}
             ratios = {}
             correlations = {}
+            discrete_distributions = {}
 
             with pebble.ProcessPool() as pool:
                 price_size_corrs = Correlations.get_price_size_corr(trades_df, DataSplitter.get_limit_orders(orders_df))
                 correlations['buy_price_size'] = price_size_corrs['buy']
                 correlations['sell_price_size'] = price_size_corrs['sell']
+
+                sell_orders = DataSplitter.get_side("sell", orders_df)
+                sell_prices_relative = DataTransformer.get_relative_prices(trades_df, sell_orders)
+                sell_x, sell_cy = Sample.get_cdf_data(sell_prices_relative)
+                discrete_distributions["sell"] = {'x': sell_x.tolist(), 'cy': sell_cy.tolist()}
+                Sample.plot_cdf(sell_x, sell_cy, "Sell order prices (relative)")
+
+                buy_orders = DataSplitter.get_side("buy", orders_df)
+                buy_prices_relative = DataTransformer.get_relative_prices(trades_df, buy_orders)
+                buy_prices_relative = buy_prices_relative.apply(lambda x: -x)
+                buy_x, buy_cy = Sample.get_cdf_data(buy_prices_relative)
+                discrete_distributions["buy"] = {'x': buy_x.tolist(), 'cy': buy_cy.tolist()}
+                Sample.plot_cdf(buy_x, buy_cy, "Buy prices (relative) (flipped for comparison)")
+
 
                 # Find distributions using different procs
                 relative_order_price_distributions = pool.schedule(DataTransformer.price_distributions,
@@ -111,6 +144,7 @@ class Sample:
                 params['ratios'] = ratios
                 params['correlations'] = correlations
                 params['distributions'] = distributions
+                params['discreteDistributions'] = discrete_distributions
 
             return params
         except Exception as e:

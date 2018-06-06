@@ -64,6 +64,7 @@ class Backtest:
                 self.logger.info("Not using params cache" + "\nGenerating params...")
                 # Get parameters
                 orders_df, trades_df, cancels_df = self.all_sampling_data
+
                 params = Sample.generate_sim_params(orders_df, trades_df, cancels_df)
 
                 # Save params (that can be reused!)
