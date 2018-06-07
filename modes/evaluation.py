@@ -93,6 +93,8 @@ class Evaluation:
         x = np.linspace(minimum, maximum)
 
         plt.plot(x, (x * slope) + intercept)
+        plt.xlabel("Real 5 minute returns")
+        plt.ylabel("Simulated 5 minute returns")
 
         plt.scatter(df['rp_diff'], df['sp_diff'])
 

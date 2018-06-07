@@ -36,3 +36,15 @@ class TestCorrelation(TestCase):
             "/Users/jamesprince/project-data/results/correlations/LTC-USD-100-fix-trades.csv")
 
         Evaluation.correlate(df)
+
+    def test_correlate_100_percentiles_midprice_inv(self):
+        df = Evaluation.load(
+            "/Users/jamesprince/project-data/results/correlations/LTC-USD-100-inv-midprices.csv")
+
+        Evaluation.correlate(df)
+
+    def test_correlate_100_percentiles_trades_inv(self):
+        df = Evaluation.load(
+            "/Users/jamesprince/project-data/results/correlations/LTC-USD-100-inv-trade.csv")
+
+        Evaluation.correlate(df)

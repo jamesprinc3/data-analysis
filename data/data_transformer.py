@@ -55,10 +55,15 @@ class DataTransformer:
 
     @staticmethod
     def intervals_distribution(df: dd):
-        intervals = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
-        cleaned_intervals = intervals[intervals != 0]
+        cleaned_intervals = DataTransformer.get_time_intervals(df)
 
         intervals_best_fit, intervals_best_fit_params = DistributionFitter.best_fit_distribution(cleaned_intervals)
         intervals_best_dist, intervals_dist_str = DistributionFitter.get_distribution_string(intervals_best_fit, intervals_best_fit_params)
 
         return intervals_best_dist, intervals_dist_str
+
+    @staticmethod
+    def get_time_intervals(df):
+        intervals = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
+        cleaned_intervals = intervals[intervals != 0]
+        return cleaned_intervals
