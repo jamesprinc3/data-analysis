@@ -111,7 +111,7 @@ def backtest_mode(st: datetime.datetime = None):
     sim_future, sim_success = wait_on_simulation(sim_future, sim_st, sim_success)
 
     if sim_success:
-        logger.info("starting final validation")
+        logger.info("Starting final validation")
         current_backtest.validate_analyses(prog_start)
 
 

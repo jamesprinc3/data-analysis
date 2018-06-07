@@ -65,5 +65,5 @@ class DataTransformer:
     @staticmethod
     def get_time_intervals(df):
         intervals = df['time'].apply(lambda x: DataUtils.date_to_unix(x, 'ns') / 1e6).diff()
-        cleaned_intervals = intervals[intervals != 0]
+        cleaned_intervals = intervals[intervals != 0].dropna()
         return cleaned_intervals
