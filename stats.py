@@ -1,6 +1,9 @@
+import datetime
 from typing import Dict, Union, Any
 
 import dask.dataframe as dd
+import nolds
+import numpy as np
 import pandas as pd
 
 from data.data_splitter import DataSplitter
@@ -112,6 +115,67 @@ class Statistics:
                  'std_dev_buy_order_price': Statistics.get_std_dev('price', DataSplitter.get_side('buy', df))}
 
         return stats
+
+    @staticmethod
+    def get_hurst_exponent_over_time(trades, st, et, step_minutes, window_minutes):
+        num_steps = ((et - st).total_seconds() / 60) / step_minutes
+        hurst_exps = []
+        times = []
+        for i in range(0, int(num_steps)):
+            iter_st = st + datetime.timedelta(minutes=step_minutes * i)
+            iter_et = iter_st + datetime.timedelta(minutes=window_minutes)
+
+            window = DataSplitter.get_between(trades, iter_st, iter_et)
+            prices = np.asarray(window['price'].dropna(), dtype=np.float32)
+
+            if len(prices) == 0:
+                continue
+
+            hurst_exp = nolds.hurst_rs(prices)
+            if 0 < hurst_exp < 1:
+                hurst_exps.append(hurst_exp)
+                times.append(iter_et)
+            else:
+                pass
+        return times, hurst_exps
+
+    @staticmethod
+    def plot_hurst_exponent(times, hurst_exps, product, st, step_minutes, window_minutes):
+        hours = list(map(lambda t: (t - st).seconds / 3600, times))
+
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 8))
+        plt.ylim(0, 1)
+        plt.plot(hours, hurst_exps)
+        plt.xlabel("Hour of day")
+        plt.ylabel("Hurst Exponent")
+        plt.title(st.date().isoformat() + " Hurst exponent plotted every " + str(
+            step_minutes) + " minutes, window size of " + str(window_minutes) + " minutes")
+        plt.savefig("/Users/jamesprince/project-data/results/hurst/" + product + "/" + st.date().isoformat() + ".png")
+        plt.show()
+
+    @staticmethod
+    def get_lyapunov_exponent_over_time(trades, st, et, step_minutes, window_minutes):
+        num_steps = ((et - st).total_seconds() / 60) / step_minutes
+        lyap_exps = []
+        times = []
+        for i in range(0, int(num_steps)):
+            iter_st = st + datetime.timedelta(minutes=step_minutes * i)
+            iter_et = iter_st + datetime.timedelta(minutes=window_minutes)
+
+            window = DataSplitter.get_between(trades, iter_st, iter_et)
+            prices = np.asarray(window['price'].dropna(), dtype=np.float32)
+
+            if len(prices) == 0:
+                continue
+
+            lyap_exp = nolds.lyap_r(prices)
+            if lyap_exp > 0:
+                lyap_exps.append(lyap_exp)
+                times.append(iter_et)
+            else:
+                pass
+        return times, lyap_exps
 
 
 def get_total(df: dd) -> int:

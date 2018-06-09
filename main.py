@@ -112,7 +112,7 @@ def backtest_mode(st: datetime.datetime = None):
 
     if sim_success:
         logger.info("Starting final validation")
-        current_backtest.validate_analyses(prog_start)
+        current_backtest.evaluate_simulation(prog_start)
 
 
 def wait_on_simulation(sim_future, sim_st, sim_success):
@@ -145,7 +145,7 @@ def run_validation_async(backtest, sim_success):
 
         @concurrent.process
         def async(p_start):
-            backtest.validate_analyses(p_start)
+            backtest.evaluate_simulation(p_start)
 
         validate_future = async(prog_start)
         logger.info("Validation started")
@@ -165,7 +165,7 @@ def sample_mode():
     Writer.json_to_file(params, config.params_root + "params.json")
 
 def simulation_mode(st: datetime.datetime = None):
-    SimulationAnalysis(config, st).analyse()
+    SimulationAnalysis(config, st).show_graphs()
 
 
 def orderbook_mode(st: datetime.datetime = None):

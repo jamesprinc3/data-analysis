@@ -33,10 +33,10 @@ class Sample:
         plt.show()
 
     @staticmethod
-    def get_cdf_data(relative_prices):
-        x = relative_prices.sort_values()
+    def get_cdf_data(vals):
+        x = vals.sort_values()
         # Normalise y axis
-        y = relative_prices / relative_prices.sum()
+        y = vals / vals.sum()
         cy = np.cumsum(y)
         return x, cy
 

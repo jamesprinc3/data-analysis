@@ -139,10 +139,14 @@ class Backtest:
             }}
         return sim_config
 
-    def validate_analyses(self, prog_start: datetime.datetime):
+    def evaluate_simulation(self, prog_start: datetime.datetime):
+        real_times, real_prices = self.__fetch_real_data()
+        start_price = real_prices.iloc[0]
+        final_real_price = real_prices.iloc[0]
+
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
-        trade_price_validation_data = self.get_trade_validation_data(sim_analysis)
-        mid_price_validation_data = self.get_midprice_validation_data(sim_analysis)
+        trade_means, trade_ub, trade_lb = self.get_trade_validation_data(sim_analysis, start_price)
+        midprice_means, midprice_ub, midprice_lb = self.get_midprice_validation_data(sim_analysis, start_price)
         monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
 
         if self.config.spread:
@@ -151,17 +155,20 @@ class Backtest:
             self.graphing.plot_spread(best_bid_data, best_ask_data)
 
         trade_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-trade.csv"
-        self.append_final_prices(trade_correlation_file_path, trade_price_validation_data[0],
-                                 trade_price_validation_data[1],
-                                 trade_price_validation_data[2], trade_price_validation_data[5])
+        self.append_final_prices(trade_correlation_file_path,
+                                 trade_means, trade_ub, trade_lb,
+                                 real_prices)
         midprice_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-midprice.csv"
-        self.append_final_prices(midprice_correlation_file_path, mid_price_validation_data[0],
-                                 mid_price_validation_data[1],
-                                 mid_price_validation_data[2], mid_price_validation_data[5])
+        self.append_final_prices(midprice_correlation_file_path,
+                                 midprice_means, midprice_ub, midprice_lb,
+                                 real_prices)
 
-        self.graph_trade_prices(*trade_price_validation_data)
-        self.graph_mid_prices(*mid_price_validation_data)
-        self.graph_monte_carlo_data(trade_price_validation_data[5].iloc[0], monte_carlo_data)
+        self.graphing.plot_comparison(self.sim_st, trade_means, trade_ub, trade_lb, [0] + self.get_xaxis_times(),
+                                      real_times, real_prices)
+        self.graphing.plot_comparison(self.sim_st, midprice_means, midprice_ub, midprice_lb,
+                                      [0] + self.get_xaxis_times(),
+                                      real_times, real_prices)
+        self.graphing.plot_monte_carlo(final_real_price, monte_carlo_data, self.sim_st, self.get_xaxis_times())
 
     def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
         start_price = real_prices.dropna().iloc[0]
@@ -186,89 +193,48 @@ class Backtest:
                  ]) + "\n"
             fd.write(row)
 
-    def get_trade_validation_data(self, sim_analysis: SimulationAnalysis):
-        times = self.get_times()
+    @staticmethod
+    def get_plot_title(sim_st, sam_w, sim_w, num_sims):
+        plot_path = sim_st.time().isoformat() \
+                    + "-sample-" + str(sam_w) \
+                    + "-sim_window-" + str(sim_w) \
+                    + "-num_sims-" + str(num_sims)
+        return plot_path
 
-        confidence_intervals = sim_analysis.calculate_trade_confidence_at_times(times)
+    def get_trade_validation_data(self, sim_analysis: SimulationAnalysis, start_price: float):
+        times = self.get_xaxis_times()
+
+        confidence_intervals = sim_analysis.calculate_trade_percentiles(times)
         self.logger.info(confidence_intervals)
-
-        real_times, real_prices = self.__fetch_real_data()
-
-        start_price = real_prices.iloc[0]
 
         # Add the initial price and then convert to numpy arrays
         sim_means = np.array([start_price] + list(map(lambda lu: (lu[0] + lu[1]) / 2, confidence_intervals.values())))
         sim_ub = np.array([start_price] + list(map(lambda x: x[1], confidence_intervals.values())))
         sim_lb = np.array([start_price] + list(map(lambda x: x[0], confidence_intervals.values())))
-        times = [0] + times
 
-        return sim_means, sim_ub, sim_lb, times, real_times, real_prices
+        return sim_means, sim_ub, sim_lb
 
-    #TODO: reduce duplication
-    def get_midprice_validation_data(self, sim_analysis: SimulationAnalysis):
-        times = self.get_times()
+    # TODO: reduce duplication
+    def get_midprice_validation_data(self, sim_analysis: SimulationAnalysis, start_price: float):
+        times = self.get_xaxis_times()
 
         time_prices_dict = sim_analysis.extract_mid_prices_at_times(sim_analysis.all_sims, times)
 
         percentiles = sim_analysis.calculate_midprice_percentiles(time_prices_dict)
         self.logger.info(percentiles)
 
-        real_times, real_prices = self.__fetch_real_data()
-
-        start_price = real_prices.iloc[0]
-
         # Add the initial price and then convert to numpy arrays
         sim_medians = np.array([start_price] + list(map(lambda lmu: lmu[1], percentiles.values())))
         sim_upper = np.array([start_price] + list(map(lambda lmu: lmu[2], percentiles.values())))
         sim_lower = np.array([start_price] + list(map(lambda lmu: lmu[0], percentiles.values())))
-        times = [0] + times
 
-        return sim_medians, sim_upper, sim_lower, times, real_times, real_prices
+        return sim_medians, sim_upper, sim_lower
 
-    def get_times(self):
+    def get_xaxis_times(self):
         times = list(range(self.config.xinterval,
                            self.config.simulation_window + self.config.xinterval,
                            self.config.xinterval))
         return times
-
-    def graph_trade_prices(self, sim_means, sim_ub, sim_lb, times, real_times,
-                           real_prices):
-        self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
-        self.config.plt.xlabel("Time (seconds)")
-        self.config.plt.ylabel("Price ($)")
-
-        # plot the data
-        self.graphing.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
-                                                       color_mean='k',
-                                                       color_shading='k')
-        self.output_graph("tradeprices", self.__get_plot_title())
-
-        self.config.plt.close()
-
-    def output_graph(self, category, title):
-        self.config.plt.title(title + " " + category)
-
-        if self.config.graph_mode == "save":
-            plot_root = self.config.graphs_root + category + "/" + self.sim_st.date().isoformat() + "/"
-            self.save_figure(plot_root, title)
-        if self.config.graph_mode == "show":
-            self.config.plt.show()
-
-    def save_figure(self, plot_root, title):
-        # Ensure directory exists
-        pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
-
-        plot_path = plot_root + title + ".png"
-
-        self.config.plt.savefig(plot_path, dpi=600, transparent=True)
-        self.logger.info("Saved plot to: " + plot_path)
-
-    def __get_plot_title(self):
-        plot_path = self.sim_st.time().isoformat() \
-                    + "-sample-" + str(self.config.sampling_window) \
-                    + "-sim_window-" + str(self.config.simulation_window) \
-                    + "-num_sims-" + str(self.config.num_simulators)
-        return plot_path
 
     def print_stat_comparison(self):
         real_orders, _, _ = DataLoader.load_split_data(self.config.real_root, self.sampling_window_start_time,
@@ -299,7 +265,7 @@ class Backtest:
 
     def get_monte_carlo_data(self, sim_analysis):
         sim_prices = {}
-        times = self.get_times()
+        times = self.get_xaxis_times()
 
         for index in range(0, len(sim_analysis.all_sims)):
             sim_prices[index] = []
@@ -315,36 +281,6 @@ class Backtest:
                 price = DataUtils.get_last_price_before(trades_df, seconds)
                 sim_prices[index].append(price)
         return sim_prices
-
-    def graph_monte_carlo_data(self, start_price, monte_carlo_data):
-
-        self.config.plt.figure(figsize=(12, 8))
-        ymin = start_price - (self.config.ywindow / 2)
-        ymax = start_price + (self.config.ywindow / 2)
-        self.config.plt.ylim(ymin, ymax)
-
-        times = self.get_times()
-
-        for _, prices_for_sim in monte_carlo_data.items():
-            if len(prices_for_sim) == 0:
-                continue
-            self.config.plt.plot(times, prices_for_sim)
-
-        self.output_graph("monte", self.__get_plot_title())
-
-    def graph_mid_prices(self, sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times,
-                         real_prices):
-        self.config.plt.title(self.config.product + " at " + self.__get_plot_title())
-        self.config.plt.xlabel("Time (seconds)")
-        self.config.plt.ylabel("Price ($)")
-
-        # plot the data
-        self.graphing.plot_mean_and_ci_and_real_values(sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times, real_prices,
-                                                       color_mean='k',
-                                                       color_shading='k')
-        self.output_graph("midprices", self.__get_plot_title())
-
-        self.config.plt.close()
 
     def get_bid_data(self, sim_analysis):
         ret = {}

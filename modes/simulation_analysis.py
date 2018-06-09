@@ -34,7 +34,7 @@ class SimulationAnalysis:
 
         self.all_sims = DataLoader().load_sim_data(self.sim_root, 0, config.num_simulators)
 
-    def analyse(self):
+    def show_graphs(self):
         # logger.debug(self.dirs)
         # for directory in self.dirs:
         i = 0
@@ -68,7 +68,7 @@ class SimulationAnalysis:
         cls.logger.info("Confidence data dumped to: " + dst)
 
     # TODO: fix some of these awful names, such as "seconds"
-    def calculate_trade_confidence_at_times(self, seconds_list: List[int], level=0.95):
+    def calculate_trade_percentiles(self, seconds_list: List[int], level=0.95):
         time_prices_dict = self.extract_trade_prices_at_times(self.all_sims, seconds_list)
         time_percentiles_dict = self.calculate_percentiles(time_prices_dict, level)
 

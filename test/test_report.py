@@ -1,8 +1,8 @@
 from unittest import TestCase
 
-from scipy.stats import binom
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import binom
 
 
 class TestReport(TestCase):
@@ -38,5 +38,10 @@ class TestReport(TestCase):
 
         plt.savefig("binom.png")
 
+    def test_get_example_cdf(self):
+        plt.figure(figsize=(12, 8))
+        plt.plot([0, 1, 1, 2, 2, 3, 3], [0, 0, 0.25, 0.25, 0.6, 0.6, 1], 'b', label="CDF")
+        plt.plot([0, 2, 2], [0.41, 0.41, 0], 'r', linestyle=':', label="Sample")
+        plt.legend()
 
-
+        plt.show()

@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 import dask.dataframe as dd
 import pandas as pd
@@ -162,5 +163,70 @@ class Graphing:
             self.config.plt.plot(best_ask_data[index]['time'], best_ask_data[index]['price'], 'r',
                                  label='Best Ask Price')
             self.config.plt.legend()
+            self.config.plt.ylabel("Price ($)")
+            self.config.plt.xlabel("Time (s)")
             self.config.plt.title("Spread")
             self.config.plt.show()  # TODO: make this conform to graphing mode
+
+    # def plot_comparison(self, sim_st, sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times,
+    #                     real_prices):
+    #     self.config.plt.title(self.config.product + " at " + self.get_plot_title())
+    #     self.config.plt.xlabel("Time (seconds)")
+    #     self.config.plt.ylabel("Price ($)")
+    #
+    #     # plot the data
+    #     self.plot_mean_and_ci_and_real_values(sim_mid_means, sim_mid_ub, sim_mid_lb, times, real_times,
+    #                                           real_prices,
+    #                                           color_mean='k',
+    #                                           color_shading='k')
+    #     self.output_graph(sim_st, "midprices", self.get_plot_title())
+    #
+    #     self.config.plt.close()
+
+    def plot_comparison(self, sim_st, sim_means, sim_ub, sim_lb, times, real_times,
+                        real_prices, title=None):
+        if not title:
+            title = self.config.product + " at " + str(sim_st)
+
+        self.config.plt.title(title)
+        self.config.plt.xlabel("Time (seconds)")
+        self.config.plt.ylabel("Price ($)")
+
+        # plot the data
+        self.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
+                                              color_mean='k',
+                                              color_shading='k')
+        self.output_graph(sim_st, "tradeprices", sim_st.isoformat())
+        self.config.plt.close()
+
+    def plot_monte_carlo(self, start_price, monte_carlo_data, sim_st, times):
+
+        self.config.plt.figure(figsize=(12, 8))
+        ymin = start_price - (self.config.ywindow / 2)
+        ymax = start_price + (self.config.ywindow / 2)
+        self.config.plt.ylim(ymin, ymax)
+
+        for _, prices_for_sim in monte_carlo_data.items():
+            if len(prices_for_sim) == 0:
+                continue
+            self.config.plt.plot(times, prices_for_sim)
+
+        self.output_graph(sim_st, "monte", sim_st.isoformat())
+
+    def output_graph(self, sim_st, category, title: str):
+        self.config.plt.title(title + " " + category)
+
+        if self.config.graph_mode == "save":
+            plot_root = self.config.graphs_root + category + "/" + sim_st.date().isoformat() + "/"
+            self.save_figure(plot_root, title)
+        if self.config.graph_mode == "show":
+            self.config.plt.show()
+
+    def save_figure(self, plot_root, title):
+        # Ensure directory exists
+        pathlib.Path(plot_root).mkdir(parents=True, exist_ok=True)
+
+        plot_path = plot_root + title + ".png"
+
+        self.config.plt.savefig(plot_path, dpi=600, transparent=True)
+        self.logger.info("Saved plot to: " + plot_path)
