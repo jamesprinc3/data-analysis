@@ -15,7 +15,7 @@ from data.data_splitter import DataSplitter
 from modes.backtest import Backtest
 from modes.sample import Sample
 from modes.simulation_analysis import SimulationAnalysis
-from orderbook import OrderBook
+from orderbook.orderbook_creator import OrderBookCreator
 from output.writer import Writer
 
 
@@ -74,8 +74,6 @@ def backtest_mode(st: datetime.datetime = None):
 
         try:
             logger.info("Gathering data for simulation at: " + sim_st.isoformat())
-            all_ob_data = map(lambda x: DataSplitter.get_between(x, ob_st, ob_et),
-                              all_data)
 
             all_sampling_data = map(lambda x: DataSplitter.get_between(x, sam_st, sam_et),
                                     all_data)
@@ -84,7 +82,7 @@ def backtest_mode(st: datetime.datetime = None):
                                   all_data)
 
             previous_backtest = current_backtest
-            current_backtest = Backtest(config, sim_st, all_ob_data, all_sampling_data, all_future_data)
+            current_backtest = Backtest(config, sim_st, all_sampling_data, all_future_data)
 
         except Exception as e:
             logger.error("Error occurred when gathering data: " + str(e))
@@ -169,14 +167,14 @@ def simulation_mode(st: datetime.datetime = None):
 
 
 def orderbook_mode(st: datetime.datetime = None):
-    closest_ob_state, closest_ob_state_str = OrderBook.locate_closest_ob_state(config.orderbook_output_root, st)
+    closest_ob_state, closest_ob_state_str = OrderBookCreator.locate_closest_ob_state(config.orderbook_output_root, st)
     orders_df, trades_df, cancels_df = DataLoader.load_split_data(config.real_root, closest_ob_state,
                                                                   st, config.product)
     ob_state_path = config.root_path + closest_ob_state_str
-    ob_state = OrderBook.load_orderbook_state(ob_state_path)
-    orderbook = OrderBook.get_orderbook(orders_df, trades_df, cancels_df, ob_state)
+    ob_state = OrderBookCreator.load_orderbook_state(ob_state_path)
+    orderbook = OrderBookCreator.get_orderbook(orders_df, trades_df, cancels_df, ob_state)
     output_file = "/Users/jamesprince/project-data/orderbook-" + st.isoformat() + ".csv"
-    OrderBook.orderbook_to_file(orderbook, output_file)
+    OrderBookCreator.orderbook_to_file(orderbook, output_file)
 
     logger.info("Orderbook saved to: " + output_file)
 

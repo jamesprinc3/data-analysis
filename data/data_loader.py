@@ -12,6 +12,8 @@ from data.data_splitter import DataSplitter
 class DataLoader:
     """Loads data and formats it appropriately so that we can always assume
     timestamps and floats are not string types to avoid silly conversions all over the place"""
+    logger = logging.getLogger("DataLoader")
+
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -28,7 +30,7 @@ class DataLoader:
 
         return df
 
-    def load_sim_data(self, root, start_index=0, end_index=1) -> (dd, dd, dd):
+    def load_sim_data(self, root, start_index=0, end_index=None) -> (dd, dd, dd):
         """
         :param root: directory that contains the output from OrderBookSimulator
         :param start_index: the (inclusive) index we wish to start from
@@ -37,6 +39,9 @@ class DataLoader:
         """
         data_root = root
         dirs = self.get_dirs_in_dir(data_root)
+
+        if end_index is None:
+            end_index = len(dirs)
 
         dirs_to_load = dirs[start_index:end_index]
         return_list = []
@@ -73,7 +78,8 @@ class DataLoader:
         dirs = next(os.walk(data_root))[2]
         return dirs
 
-    def load_feed(self, root, start_time: datetime, end_time: datetime, product: str) -> dd:
+    @classmethod
+    def load_feed(cls, root, start_time: datetime, end_time: datetime, product: str) -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""
         # Assume data is on the same day and just hours apart for now
         hour_delta = end_time.hour - start_time.hour
@@ -83,7 +89,7 @@ class DataLoader:
         # TODO: split this function up!
         for i in range(0, hour_delta + 1):
             filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"
-            self.logger.debug(filename)
+            cls.logger.debug(filename)
             files_to_load.append(filename)
 
         feed_df = pd.DataFrame()

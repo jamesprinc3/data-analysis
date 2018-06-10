@@ -16,7 +16,7 @@ from data.data_splitter import DataSplitter
 from data.data_utils import DataUtils
 from modes.sample import Sample
 from modes.simulation_analysis import SimulationAnalysis
-from orderbook import OrderBook, reconstruct_orderbook
+from orderbook.orderbook_creator import OrderBookCreator, reconstruct_orderbook
 from output.graphing import Graphing
 from output.writer import Writer
 from sim_config import SimConfig
@@ -24,7 +24,7 @@ from stats import Statistics
 
 
 class Backtest:
-    def __init__(self, config, sim_st: datetime, all_ob_data, all_sampling_data, all_future_data):
+    def __init__(self, config, sim_st: datetime, all_sampling_data, all_future_data):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.config = config
@@ -49,7 +49,6 @@ class Backtest:
         self.orderbook_window_end_time = sim_st
 
         self.all_sampling_data = all_sampling_data
-        self.all_ob_data = all_ob_data
         self.all_future_data = all_future_data
 
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
@@ -71,11 +70,11 @@ class Backtest:
                 Writer.json_to_file(params, params_path)
                 self.logger.info("Permanent parameters saved to: " + params_path)
 
-            ob_final = reconstruct_orderbook(self.all_ob_data, self.config, self.sim_st, self.logger)
+            ob_final = reconstruct_orderbook(self.config, self.sim_st, self.logger)
 
             # Save orderbook
             orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
-            OrderBook.orderbook_to_file(ob_final, orderbook_path)
+            OrderBookCreator.orderbook_to_file(ob_final, orderbook_path)
 
             # Generate .conf file
             sim_config = self.generate_config_dict(orderbook_path, params_path)
@@ -120,11 +119,12 @@ class Backtest:
             self.logger.error("Failed writing sim config to " + self.config.sim_config_path + " exception: " + str(e))
 
     def generate_config_dict(self, orderbook_path, params_path):
-        sim_config = {'paths': {
-            'simRoot': self.sim_root,
-            'params': params_path,
-            'orderbook': orderbook_path
-        },
+        sim_config = {
+            'paths': {
+                'simRoot': self.sim_root,
+                'params': params_path,
+                'orderbook': orderbook_path
+            },
 
             'execution': {
                 'numSimulations': self.config.num_simulators,
@@ -134,15 +134,19 @@ class Backtest:
                 'logLevel': "INFO"
             },
 
+            'precision': {
+                'decimalPlaces': 5
+            },
+
             'orderbook': {
                 'stp': False
             }}
         return sim_config
 
     def evaluate_simulation(self, prog_start: datetime.datetime):
-        real_times, real_prices = self.__fetch_real_data()
-        start_price = real_prices.iloc[0]
-        final_real_price = real_prices.iloc[0]
+        real_prices_df = self.__fetch_real_prices()
+        start_price = real_prices_df['price'].iloc[0]
+        final_real_price = real_prices_df['price'].iloc[-1]
 
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         trade_means, trade_ub, trade_lb = self.get_trade_validation_data(sim_analysis, start_price)
@@ -157,17 +161,17 @@ class Backtest:
         trade_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-trade.csv"
         self.append_final_prices(trade_correlation_file_path,
                                  trade_means, trade_ub, trade_lb,
-                                 real_prices)
+                                 real_prices_df['price'])
         midprice_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-midprice.csv"
         self.append_final_prices(midprice_correlation_file_path,
                                  midprice_means, midprice_ub, midprice_lb,
-                                 real_prices)
+                                 real_prices_df['price'])
 
         self.graphing.plot_comparison(self.sim_st, trade_means, trade_ub, trade_lb, [0] + self.get_xaxis_times(),
-                                      real_times, real_prices)
+                                      real_prices_df['time'], real_prices_df['price'])
         self.graphing.plot_comparison(self.sim_st, midprice_means, midprice_ub, midprice_lb,
                                       [0] + self.get_xaxis_times(),
-                                      real_times, real_prices)
+                                      real_prices_df['time'], real_prices_df['price'])
         self.graphing.plot_monte_carlo(final_real_price, monte_carlo_data, self.sim_st, self.get_xaxis_times())
 
     def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
@@ -251,17 +255,15 @@ class Backtest:
 
         print(print_str)
 
-    def __fetch_real_data(self):
+    def __fetch_real_prices(self):
         df = DataLoader().load_feed(self.config.real_root, self.sim_st,
                                     self.sim_st + timedelta(seconds=self.config.simulation_window), self.config.product)
-        # [['time', 'price', 'reason']]
         trades_df = DataSplitter.get_trades(df)
 
         trades_df['time'] = DataUtils().get_times_in_seconds_after_start(trades_df['time'])
         trades_df['price'].iloc[0] = DataUtils().get_first_non_nan(trades_df['price'])
-        real_times = trades_df['time']
-        real_prices = trades_df['price']
-        return real_times, real_prices
+
+        return trades_df[['time', 'price']]
 
     def get_monte_carlo_data(self, sim_analysis):
         sim_prices = {}

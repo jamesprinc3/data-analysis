@@ -1,19 +1,22 @@
 import datetime
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.special
 import scipy.stats
+from prettytable import PrettyTable
 
 from data.data_loader import DataLoader
+from data.data_splitter import DataSplitter
 from stats import Statistics
 
 
 class Evaluation:
 
     @staticmethod
-    def load(path: str):
+    def load_csv(path: str):
         df = pd.read_csv(path)
         return df
 
@@ -21,7 +24,7 @@ class Evaluation:
     def get_plt(window):
         plt.figure(figsize=(12, 8))
 
-        maximum, minimum = Evaluation.get_min_max(window)
+        maximum, minimum = Evaluation.get_plot_min_max(window)
         # plt.xlim(minimum, maximum)
         # plt.ylim(minimum, maximum)
 
@@ -30,7 +33,7 @@ class Evaluation:
         return plt
 
     @staticmethod
-    def get_min_max(window):
+    def get_plot_min_max(window):
         minimum = -window / 2
         maximum = window / 2
         return maximum, minimum
@@ -45,13 +48,63 @@ class Evaluation:
             return 0
 
     @staticmethod
-    def correlate(df, compare_hurst_exp: bool = False, compare_lyapunov_exponent=False, window: int = 10):
+    def compare_order_metrics(real_orders: pd.DataFrame, multi_sim_orders: List[pd.DataFrame]):
+        """Compares metrics which only make sense in orders (e.g. buy/sell split)"""
+
+        real_buy_orders = DataSplitter.get_side("buy", real_orders)
+        sim_buy_orders = list(map(lambda sim: DataSplitter.get_side("buy", sim), multi_sim_orders))
+
+        print("Buy metrics:")
+        Evaluation.compare_metrics(real_buy_orders, sim_buy_orders)
+
+        real_sell_orders = DataSplitter.get_side("sell", real_orders)
+        sim_sell_orders = list(map(lambda sim: DataSplitter.get_side("sell", sim), multi_sim_orders))
+
+        print("Sell metrics:")
+        Evaluation.compare_metrics(real_sell_orders, sim_sell_orders)
+
+    @staticmethod
+    def compare_metrics(real_df: pd.DataFrame, multi_sim_feed: List[pd.DataFrame]):
+        """Compare flows of categories of events (e.g. orders, cancels, trades) from the simulations vs the real orders"""
+
+        sim_df = multi_sim_feed[0]
+        for i in range(1, len(multi_sim_feed)):
+            sim_df = sim_df.append(multi_sim_feed[i])
+
+        t = PrettyTable(['Metric', 'Real', 'Sim'])
+
+        real_order_count = len(real_df)
+        avg_order_count = int(len(sim_df) / len(multi_sim_feed))
+        t.add_row(['Count', real_order_count, avg_order_count])
+
+        t = Evaluation.compare_col_func(Statistics.get_mean, "mean", "price", real_df, sim_df, t)
+        t = Evaluation.compare_col_func(Statistics.get_std_dev, "std. dev. ", "price", real_df,
+                                        sim_df.sample(avg_order_count), t)
+        t = Evaluation.compare_col_func(Statistics.get_mean, "mean", "size", real_df, sim_df, t)
+        t = Evaluation.compare_col_func(Statistics.get_std_dev, "std. dev. ", "size", real_df,
+                                        sim_df.sample(avg_order_count), t)
+
+        t.align = 'r'
+        print(t)
+
+    @staticmethod
+    def compare_col_func(f: callable, data_desc: str, column: str, real_df: pd.DataFrame, sim_df: pd.DataFrame, t):
+        """Compare sim and real data by calling a function on one of their common columns"""
+        real_res = f(column, real_df)
+        sim_res = f(column, sim_df)
+        t.add_row([data_desc + " " + column, real_res, sim_res])
+
+        return t
+
+    @staticmethod
+    def compare_returns(df, compare_hurst_exp: bool = False, compare_lyapunov_exponent=False, window: int = 10):
+        """Compare returns of the simulated markets with the real market"""
         product = "LTC-USD"
 
         plt = Evaluation.get_plt(window)
 
         df = Evaluation.calculate_aux_rows(df, window)
-        Evaluation.print_summary(df)
+        Evaluation.print_sim_summary(df)
 
         Evaluation.plot_linregress(df['rp_diff'], df['sp_diff'],
                                    window, xlabel="Real 5 minute returns",
@@ -139,7 +192,7 @@ class Evaluation:
         return df
 
     @staticmethod
-    def print_summary(df):
+    def print_sim_summary(df):
         total = len(df)
         correct_dirs = len(df[df['rp_dir'] == df['sp_dir']])
         num_inbounds = len(df[df['in_bounds'] == True])
@@ -158,7 +211,7 @@ class Evaluation:
         ling = scipy.stats.linregress(x1, x2)
         print("linregress: " + str(ling))
         slope, intercept, r_value, p_value, std_err = ling
-        minimum, maximum = Evaluation.get_min_max(window)
+        minimum, maximum = Evaluation.get_plot_min_max(window)
         if show_regression_line:
             x = np.linspace(minimum, maximum)
             plt.plot(x, (x * slope) + intercept)

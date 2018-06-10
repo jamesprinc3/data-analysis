@@ -20,12 +20,12 @@ class Statistics:
         pass
 
     @staticmethod
-    def get_num_reason(reason: str, df: dd):
+    def get_reason_count(reason: str, df: dd):
         num = len(df[df['reason'] == reason])
         return num
 
     @staticmethod
-    def get_num_type(t: str, df: dd) -> int:
+    def get_type_count(t: str, df: dd) -> int:
         num = len(df[df['type'] == t])
         return num
 
@@ -50,11 +50,27 @@ class Statistics:
         return a_ratio, b_ratio
 
     @staticmethod
-    def get_buy_sell_order_ratio(df: dd) -> (float, float):
+    def format_ratio(a, b, dp=2):
+        format_str = "%." + str(dp) + "f"
+
+        return format_str % a, format_str % b
+
+    @staticmethod
+    def get_buy_sell_ratio_str(df: dd, dp=2) -> (float, float):
+        num_buys, num_sells = Statistics.get_buy_sell_ratio(df)
+        return Statistics.format_ratio(num_buys, num_sells, dp)
+
+    @staticmethod
+    def get_buy_sell_ratio(df: dd) -> (float, float):
         num_buys = len(DataSplitter.get_side("buy", df))
         num_sells = len(DataSplitter.get_side("sell", df))
 
         return Statistics.get_ratio(num_buys, num_sells)
+
+    @staticmethod
+    def get_buy_sell_vol_ratio_str(df: dd, dp=2):
+        buy_vol, sell_vol = Statistics.get_buy_sell_volume_ratio(df)
+        return Statistics.format_ratio(buy_vol, sell_vol, dp)
 
     @staticmethod
     def get_buy_sell_volume_ratio(df: dd):
@@ -87,10 +103,12 @@ class Statistics:
     @staticmethod
     def get_feed_stats(df: dd) -> Dict[str, Union[int, Any]]:
         """Calculate and print some statistics relating to the data feed"""
-        stats = {'num_total_msgs': get_total(df), 'num_trades': Statistics.get_num_reason('filled', df),
-                 'num_cancel': Statistics.get_num_reason('canceled', df), 'num_received': Statistics.get_num_type('received', df),
-                 'num_open': Statistics.get_num_type('open', df), 'num_done': Statistics.get_num_type('done', df),
-                 'num_match': Statistics.get_num_type('match', df), 'num_change': Statistics.get_num_type('change', df),
+        stats = {'num_total_msgs': get_total(df), 'num_trades': Statistics.get_reason_count('filled', df),
+                 'num_cancel': Statistics.get_reason_count('canceled', df),
+                 'num_received': Statistics.get_type_count('received', df),
+                 'num_open': Statistics.get_type_count('open', df), 'num_done': Statistics.get_type_count('done', df),
+                 'num_match': Statistics.get_type_count('match', df),
+                 'num_change': Statistics.get_type_count('change', df),
                  'avg_trade_price': Statistics.get_mean('price', DataSplitter.get_trades(df)),
                  'std_dev_trade_price': Statistics.get_std_dev('price', DataSplitter.get_trades(df))}
 
@@ -98,8 +116,8 @@ class Statistics:
 
     @staticmethod
     def get_order_stats(df: dd) -> Dict[Union[str, Any], Union[float, Any]]:
-        stats = {'buy_order_ratio': Statistics.get_buy_sell_order_ratio(df)[0],
-                 'sell_order_ratio': Statistics.get_buy_sell_order_ratio(df)[1],
+        stats = {'buy_order_ratio': Statistics.get_buy_sell_ratio(df)[0],
+                 'sell_order_ratio': Statistics.get_buy_sell_ratio(df)[1],
                  'buy_volume_ratio': Statistics.get_buy_sell_volume_ratio(df)[0],
                  'sell_volume_ratio': Statistics.get_buy_sell_volume_ratio(df)[1],
                  'avg_order_size': Statistics.get_mean('size', df), 'std_dev_order_size': Statistics.get_std_dev('size', df),

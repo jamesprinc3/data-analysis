@@ -141,8 +141,8 @@ class Sample:
 
                 # intervals = pool.schedule(DataTransformer.intervals_distribution, (orders_df,))
 
-                ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_order_ratio(orders_df)
-                ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_order_ratio(cancels_df)
+                ratios["buy_sell_order_ratio"] = Statistics.get_buy_sell_ratio(orders_df)
+                ratios["buy_sell_cancel_ratio"] = Statistics.get_buy_sell_ratio(cancels_df)
                 ratios["buy_sell_volume_ratio"] = Statistics.get_buy_sell_volume_ratio(orders_df)
                 ratios['limit_market_order_ratio'] = Statistics.get_limit_market_order_ratio(orders_df)
 

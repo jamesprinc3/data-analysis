@@ -9,10 +9,11 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 
+from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
 
 
-class OrderBook:
+class OrderBookCreator:
     logger = logging.getLogger("OrderBook")
 
     @staticmethod
@@ -32,7 +33,7 @@ class OrderBook:
 
     @staticmethod
     def locate_closest_ob_state(root: str, time: datetime.datetime):
-        files = OrderBook.enum_all_files(root)
+        files = OrderBookCreator.enum_all_files(root)
         files_before_time = list(filter(lambda f: f < time.isoformat(), files))
         closest_state_str = files_before_time[-1]
 
@@ -53,36 +54,38 @@ class OrderBook:
             ob_state = pd.DataFrame(all_active_orders, columns=column_names)
             ob_state[['price', 'size']] = ob_state[['price', 'size']].apply(pd.to_numeric)
 
-            return ob_state
+            return seq_num, ob_state
 
     @staticmethod
-    def get_orderbook(orders: dd, trades: dd, cancels: dd, ob_state: dd) -> dd:
+    def get_orderbook(feed_df: pd.DataFrame, ob_state: dd, ob_state_seq) -> dd:
         """Gets those orders which are still active at the end of the feed"""
         # Find those orders which are no longer on the book
         # TODO: find those orders which were modified, handle carefully
-        seq_num = ob_state['sequence'].iloc[0]
-        limit_orders = DataSplitter.get_limit_orders(orders)
-        residual_orders = limit_orders[limit_orders['sequence'] > seq_num]
+        open_messages = feed_df[feed_df['type'] == 'open']
+        open_messages['size'] = open_messages['remaining_size']
+        print(open_messages)
+        residual_orders = open_messages[open_messages['sequence'] > ob_state_seq]
         all_orders = ob_state.append(residual_orders)[['side', 'order_id', 'price', 'size']]
 
-        executed_order_ids = trades['order_id'].unique()
-        cancelled_order_ids = cancels['order_id'].unique()
+        done_messages = feed_df[feed_df['type'] == 'done']
+        done_order_ids = list(done_messages['order_id'])
+
+
 
         # Find those orders which are still on the book
-        ob_filtered = all_orders[~all_orders['order_id'].isin(executed_order_ids)
-                                 & ~all_orders['order_id'].isin(cancelled_order_ids)]
+        ob_filtered = all_orders[~all_orders['order_id'].isin(done_order_ids)]
 
         # This variable is used in the pandas query below
-        final_trade_price = trades['price'].dropna().iloc[-1]
+        # final_trade_price = trades['price'].dropna().iloc[-1]
 
-        ob_final = DataSplitter.get_side("buy", ob_filtered).query('price < @final_trade_price').append(
-            DataSplitter.get_side("sell", ob_filtered).query('price > @final_trade_price')
-        )
+        # ob_final = DataSplitter.get_side("buy", ob_filtered).query('price < @final_trade_price').append(
+        #     DataSplitter.get_side("sell", ob_filtered).query('price > @final_trade_price')
+        # )
 
-        # if not OrderBook.check_ob_valid(ob_final):
-        #     raise AssertionError("OrderBook does not appear to be valid")
+        if not OrderBookCreator.check_ob_valid(ob_filtered):
+            raise AssertionError("OrderBook does not appear to be valid")
 
-        return ob_final.reset_index(drop=True)
+        return ob_filtered.reset_index(drop=True)
 
     @staticmethod
     def check_ob_valid(ob: dd) -> bool:
@@ -95,7 +98,7 @@ class OrderBook:
     def orderbook_to_file(cls, orderbook: pd.DataFrame, file_path: str) -> None:
         try:
             orderbook.sort_values(by='price', inplace=True)
-            orderbook.to_csv(file_path)
+            orderbook.to_csv(file_path, index=False)
             cls.logger.info("Orderbook saved to: " + file_path)
         except Exception as e:
             cls.logger.error("Failed to save orderbook to " + file_path + " exception: " + str(e))
@@ -108,8 +111,8 @@ class OrderBook:
         bids = DataSplitter.get_side("buy", ob_state)
         asks = DataSplitter.get_side("sell", ob_state)
 
-        OrderBook.__plot_bid_side(bids, xwindow, percentile=0.9)
-        OrderBook.__plot_ask_side(asks, xwindow, percentile=0.9)
+        OrderBookCreator.__plot_bid_side(bids, xwindow, percentile=0.9)
+        OrderBookCreator.__plot_ask_side(asks, xwindow, percentile=0.9)
 
         plt.title("Order Book")
         plt.xlabel("Price")
@@ -164,18 +167,23 @@ class OrderBook:
 
         plt.plot(xs, ys, 'r', label="Ask Side")
 
-
         pass
 
 
-def reconstruct_orderbook(all_ob_data, config, sim_st, logger):
+def reconstruct_orderbook(config, sim_st, logger):
     try:
-        orders_df, trades_df, cancels_df = all_ob_data
-        _, closest_state_str = OrderBook.locate_closest_ob_state(config.orderbook_input_root, sim_st)
+        closest_state_time_utc_1, closest_state_str = OrderBookCreator.locate_closest_ob_state(
+            config.orderbook_input_root,
+            sim_st + datetime.timedelta(hours=1))
+        # - 10 seconds so that we definitely get all of the messages
+        closest_state_time_utc_0 = closest_state_time_utc_1 - datetime.timedelta(hours=1, seconds=10)
+        feed_df = DataLoader.load_feed(config.real_root, closest_state_time_utc_0, sim_st, "LTC-USD")
         closest_state_file_path = config.orderbook_input_root + closest_state_str
         logger.info("Closest order book path: " + closest_state_file_path)
-        ob_state_df = OrderBook().load_orderbook_state(closest_state_file_path)
-        ob_final = OrderBook().get_orderbook(orders_df, trades_df, cancels_df, ob_state_df)
+        ob_state_seq, ob_state_df = OrderBookCreator().load_orderbook_state(closest_state_file_path)
+        logger.info("Orderbook state sequence: " + str(ob_state_seq))
+        logger.info("Feed first sequence: " + str(feed_df['sequence'].values.min()))
+        ob_final = OrderBookCreator().get_orderbook(feed_df, ob_state_df, ob_state_seq)
         return ob_final
     except Exception as e:
         logger.error("Order Book Reconstruction failed: " + str(e))
