@@ -84,8 +84,8 @@ class Statistics:
 
     @staticmethod
     def get_limit_market_order_ratio(df: dd):
-        limits = DataSplitter.get_limit_orders(df)
-        markets = DataSplitter.get_market_orders(df)
+        limits = DataSplitter.get_limit_orders_from_feed(df)
+        markets = DataSplitter.get_market_orders_from_feed(df)
 
         num_limits = len(limits)
         num_markets = len(markets)

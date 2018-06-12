@@ -41,7 +41,8 @@ class Sample:
         return x, cy
 
     @classmethod
-    def generate_sim_params(cls, orders_df, trades_df, cancels_df, graph=False):
+    def generate_sim_params(cls, orders_df, trades_df, cancels_df, feed_df, ob_state, ob_state_seq_num, ob_state_time,
+                            graph=False):
         cls.check_has_elements([orders_df, trades_df, cancels_df])
 
         try:
@@ -51,32 +52,37 @@ class Sample:
             correlations = {}
             discrete_distributions = {}
 
-            # TODO: reduce code duplication and parallelise inverse tingz
+            # TODO: reduce code duplication and parallelise inverse CDF generation
             with pebble.ProcessPool() as pool:
-                price_size_corrs = Correlations.get_price_size_corr(trades_df, DataSplitter.get_limit_orders(orders_df))
+                price_size_corrs = Correlations.get_price_size_corr(trades_df,
+                                                                    DataSplitter.get_limit_orders_from_feed(orders_df))
                 correlations['buy_price_size'] = price_size_corrs['buy']
                 correlations['sell_price_size'] = price_size_corrs['sell']
 
                 sell_orders = DataSplitter.get_side("sell", orders_df)
-                sell_prices_relative = DataTransformer.get_relative_prices(trades_df, sell_orders)
+                sell_prices_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
+                                                                                       ob_state_time, feed_df,
+                                                                                       sell_orders)
                 sell_x, sell_cy = Sample.get_cdf_data(sell_prices_relative)
                 discrete_distributions["sell_price_relative"] = {'x': sell_x.tolist(), 'cy': sell_cy.tolist()}
                 Sample.plot_cdf(sell_x, sell_cy, "Sell order prices (relative)")
 
                 buy_orders = DataSplitter.get_side("buy", orders_df)
-                buy_prices_relative = DataTransformer.get_relative_prices(trades_df, buy_orders)
+                buy_prices_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
+                                                                                      ob_state_time, feed_df,
+                                                                                      buy_orders)
                 buy_prices_relative = buy_prices_relative.apply(lambda x: -x)
                 buy_x, buy_cy = Sample.get_cdf_data(buy_prices_relative)
                 discrete_distributions["buy_price_relative"] = {'x': buy_x.tolist(), 'cy': buy_cy.tolist()}
                 Sample.plot_cdf(buy_x, buy_cy, "Buy prices (relative) (flipped for comparison)")
 
-                market_orders = DataSplitter.get_market_orders(orders_df)
+                market_orders = DataSplitter.get_market_orders_from_feed(orders_df)
 
                 buy_market_sizes = DataSplitter.get_side("buy", market_orders)['size'].dropna().apply(lambda x: abs(x))
                 buy_market_sizes_x, buy_market_sizes_cy = Sample.get_cdf_data(buy_market_sizes)
                 discrete_distributions["buy_market_size"] = \
                     {'x': buy_market_sizes_x.tolist(), 'cy': buy_market_sizes_cy.tolist()}
-                Sample.plot_cdf(buy_x, buy_cy, "Buy market order sizes")
+                Sample.plot_cdf(buy_market_sizes_x, buy_market_sizes_cy, "Buy market order sizes")
 
                 sell_market_sizes = DataSplitter.get_side("sell", market_orders)['size'].dropna().apply(
                     lambda x: abs(x))
@@ -97,11 +103,11 @@ class Sample:
                 #                                           dict(relative=False, graph=True))
 
                 # Buy/sell price Cancellation
-                relative_cancel_price_distributions = pool.schedule(DataTransformer.price_distributions,
-                                                                    (trades_df, cancels_df,))
+                # relative_cancel_price_distributions = pool.schedule(DataTransformer.price_distributions,
+                #                                                     (trades_df, cancels_df,))
 
                 # Limit Order Size
-                limit_orders = DataSplitter.get_limit_orders(orders_df)
+                limit_orders = DataSplitter.get_limit_orders_from_feed(orders_df)
 
                 buy_limit_orders_size = DataSplitter.get_side("buy", limit_orders)['size'].dropna().apply(
                     lambda x: abs(x))

@@ -43,14 +43,22 @@ class DataSplitter:
         return df[df['type'] == 'received']
 
     @staticmethod
-    def get_limit_orders(df: dd) -> dd:
-        orders = DataSplitter.get_orders(df)
+    def get_limit_orders(orders: dd) -> dd:
         return orders[orders['order_type'] == 'limit']
 
     @staticmethod
-    def get_market_orders(df: dd) -> dd:
+    def get_limit_orders_from_feed(df: dd) -> dd:
         orders = DataSplitter.get_orders(df)
+        return DataSplitter.get_limit_orders(orders)
+
+    @staticmethod
+    def get_market_orders(orders: dd) -> dd:
         return orders[orders['order_type'] == 'market']
+
+    @staticmethod
+    def get_market_orders_from_feed(df: dd) -> dd:
+        orders = DataSplitter.get_orders(df)
+        return DataSplitter.get_market_orders(orders)
 
     @staticmethod
     def get_order_type(order_type: str, df: dd):

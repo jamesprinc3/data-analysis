@@ -24,7 +24,8 @@ class TestEvaluation(TestCase):
     def test_compare_order_metrics(self):
         sim_root = self.config.sim_root + self.sim_st.date().isoformat() + "/" + self.sim_st.time().isoformat() + "/"
         all_sims = DataLoader().load_sim_data(sim_root)
-        all_sim_orders = list(map(lambda sim: sim[0].compute(), all_sims))
+        all_sim_limit_orders = list(map(lambda sim: DataSplitter.get_limit_orders(sim[0].compute()), all_sims))
+        all_sim_market_orders = list(map(lambda sim: DataSplitter.get_market_orders(sim[0].compute()), all_sims))
         all_sim_trades = list(map(lambda sim: sim[1].compute(), all_sims))
         all_sim_cancels = list(map(lambda sim: sim[2].compute(), all_sims))
 
@@ -32,13 +33,17 @@ class TestEvaluation(TestCase):
                                          self.sim_st + timedelta(seconds=self.config.simulation_window),
                                          self.config.product)
         real_orders = DataSplitter.get_orders(feed_df)
+        real_limit_orders = DataSplitter.get_limit_orders(real_orders)
+        real_market_orders = DataSplitter.get_market_orders(real_orders)
         real_trades = DataSplitter.get_trades(feed_df)
+        real_trades['size'] = real_trades['remaining_size']
         real_cancels = DataSplitter.get_cancellations(feed_df)
+        real_cancels['size'] = real_cancels['remaining_size']
 
-        print("Order metrics")
-        Evaluation.compare_metrics(real_orders, all_sim_orders)
-        print("Order Buy/Sell metrics")
-        Evaluation.compare_order_metrics(real_orders, all_sim_orders)
+        print("Order Buy/Sell limit metrics")
+        Evaluation.compare_order_metrics(real_limit_orders, all_sim_limit_orders)
+        print("Order Buy/Sell market metrics")
+        Evaluation.compare_order_metrics(real_market_orders, all_sim_market_orders)
         print("Trade metrics")
         Evaluation.compare_metrics(real_trades, all_sim_trades)
         print("Cancel metrics")
@@ -86,6 +91,12 @@ class TestEvaluation(TestCase):
     def test_correlate_100_percentiles_trades_inv(self):
         df = Evaluation.load_csv(
             self.corr_root + "LTC-USD-100-inv-trade.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_utc_midprice(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD-utc.csv")
 
         Evaluation.compare_returns(df)
 

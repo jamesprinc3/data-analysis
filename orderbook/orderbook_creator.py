@@ -65,7 +65,7 @@ class OrderBookCreator:
         open_messages['size'] = open_messages['remaining_size']
         print(open_messages)
         residual_orders = open_messages[open_messages['sequence'] > ob_state_seq]
-        all_orders = ob_state.append(residual_orders)[['side', 'order_id', 'price', 'size']]
+        all_orders = ob_state.append(residual_orders)
 
         done_messages = feed_df[feed_df['type'] == 'done']
         done_order_ids = list(done_messages['order_id'])
@@ -85,7 +85,9 @@ class OrderBookCreator:
         if not OrderBookCreator.check_ob_valid(ob_filtered):
             raise AssertionError("OrderBook does not appear to be valid")
 
-        return ob_filtered.reset_index(drop=True)
+        final_seq = ob_filtered['sequence'].sort_values().iloc[-1]
+
+        return ob_filtered.reset_index(drop=True)[['side', 'order_id', 'price', 'size']], final_seq
 
     @staticmethod
     def check_ob_valid(ob: dd) -> bool:
@@ -177,13 +179,13 @@ def reconstruct_orderbook(config, sim_st, logger):
             sim_st + datetime.timedelta(hours=1))
         # - 10 seconds so that we definitely get all of the messages
         closest_state_time_utc_0 = closest_state_time_utc_1 - datetime.timedelta(hours=1, seconds=10)
-        feed_df = DataLoader.load_feed(config.real_root, closest_state_time_utc_0, sim_st, "LTC-USD")
+        feed_df = DataLoader.load_feed(config.real_root, closest_state_time_utc_0, sim_st, config.product)
         closest_state_file_path = config.orderbook_input_root + closest_state_str
         logger.info("Closest order book path: " + closest_state_file_path)
         ob_state_seq, ob_state_df = OrderBookCreator().load_orderbook_state(closest_state_file_path)
         logger.info("Orderbook state sequence: " + str(ob_state_seq))
         logger.info("Feed first sequence: " + str(feed_df['sequence'].values.min()))
-        ob_final = OrderBookCreator().get_orderbook(feed_df, ob_state_df, ob_state_seq)
-        return ob_final
+        ob_final, ob_final_seq = OrderBookCreator().get_orderbook(feed_df, ob_state_df, ob_state_seq)
+        return ob_final_seq, ob_final
     except Exception as e:
         logger.error("Order Book Reconstruction failed: " + str(e))

@@ -183,7 +183,7 @@ class Graphing:
     #
     #     self.config.plt.close()
 
-    def plot_comparison(self, sim_st, sim_means, sim_ub, sim_lb, times, real_times,
+    def plot_comparison(self, category: str, sim_st, sim_means, sim_ub, sim_lb, times, real_times,
                         real_prices, title=None):
         if not title:
             title = self.config.product + " at " + str(sim_st)
@@ -196,7 +196,7 @@ class Graphing:
         self.plot_mean_and_ci_and_real_values(sim_means, sim_ub, sim_lb, times, real_times, real_prices,
                                               color_mean='k',
                                               color_shading='k')
-        self.output_graph(sim_st, "tradeprices", sim_st.isoformat())
+        self.output_graph(sim_st, category, sim_st.isoformat())
         self.config.plt.close()
 
     def plot_monte_carlo(self, start_price, monte_carlo_data, sim_st, times):

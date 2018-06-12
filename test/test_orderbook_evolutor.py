@@ -48,6 +48,6 @@ class TestOrderBookEvolutor(TestCase):
 
         print("feed start: " + str(seq_list[0]))
 
-        summary_df = orderbook_evolutor.evolve_orderbook(feed_df, step_seconds=1)
+        summary_df = orderbook_evolutor.evolve_orderbook_discrete(feed_df, step_seconds=1)
 
         print(summary_df)

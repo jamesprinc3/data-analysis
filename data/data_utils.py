@@ -52,13 +52,13 @@ class DataUtils:
         return data
 
     @staticmethod
-    def fuzzy_join(orders: dd, price_over_time: dd) -> dd:
+    def fuzzy_join(orders: dd, price_over_time: dd, on: str) -> dd:
         orders.loc[:, 'price'] = pd.to_numeric(orders['price'])
         orders.loc[:, 'time'] = pd.to_datetime(orders['time'])
 
         price_over_time = price_over_time.reindex(orders['time'].unique(), method='nearest')
 
-        joined = orders.join(price_over_time, on='time').fillna(method='ffill')
+        joined = orders.join(price_over_time, on=on).fillna(method='ffill')
 
         joined['relative_price'] = joined.apply(
             lambda row: float(row['price']) - float(row['most_recent_trade_price']),
