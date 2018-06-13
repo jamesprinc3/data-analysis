@@ -84,6 +84,9 @@ class Evaluation:
         t = Evaluation.compare_col_func(Statistics.get_std_dev, "std. dev. ", "size", real_df,
                                         sim_df.sample(avg_order_count), t)
 
+        t = Evaluation.compare_col_func(lambda col_name, df: df[col_name].sum(), "volume", "size", real_df,
+                                        sim_df.sample(avg_order_count), t)
+
         t.align = 'r'
         print(t)
 

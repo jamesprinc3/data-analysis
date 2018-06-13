@@ -100,6 +100,18 @@ class TestEvaluation(TestCase):
 
         Evaluation.compare_returns(df)
 
+    def test_correlate_utc_mid_midprices(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD-mid-midprices.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_utc_mid_trade(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD-mid-trade.csv")
+
+        Evaluation.compare_returns(df)
+
     def test_hurst_regions(self):
         one_nine = Evaluation.load_csv(
             self.corr_root + "1-9.csv")

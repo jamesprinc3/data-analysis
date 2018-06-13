@@ -54,43 +54,44 @@ class Backtest:
         self.graphing = Graphing(config, "Backtest @ " + sim_st.isoformat())
 
     def prepare_simulation(self):
-        # try:
-        ob_state_seq, ob_state = reconstruct_orderbook(self.config, self.sim_st, self.logger)
+        try:
+            ob_state_seq, ob_state = reconstruct_orderbook(self.config, self.sim_st, self.logger)
 
-        # Save orderbook
-        orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
-        OrderBookCreator.orderbook_to_file(ob_state, orderbook_path)
+            # Save orderbook
+            orderbook_path = self.config.orderbook_output_root + self.orderbook_window_end_time.isoformat() + ".csv"
+            OrderBookCreator.orderbook_to_file(ob_state, orderbook_path)
 
-        params_path = self.params_root \
-                      + self.sim_st.time().isoformat() + ".json"
-        if self.config.use_cached_params and os.path.isfile(params_path):
-            self.logger.info("Params file exists, therefore we're using it! " + params_path)
-        else:
-            self.logger.info("Not using params cache" + "\nGenerating params...")
-            # Get parameters
-            orders_df, trades_df, cancels_df = self.all_sampling_data
+            params_path = self.params_root \
+                          + self.sim_st.time().isoformat() + ".json"
+            if self.config.use_cached_params and os.path.isfile(params_path):
+                self.logger.info("Params file exists, therefore we're using it! " + params_path)
+            else:
+                self.logger.info("Not using params cache" + "\nGenerating params...")
+                # Get parameters
+                orders_df, trades_df, cancels_df = self.all_sampling_data
 
-            # TODO: massive duplication in the arguments
-            params_ob_state_seq, params_ob_state = reconstruct_orderbook(self.config, self.sampling_window_start_time,
-                                                                         self.logger)
-            feed_df = DataLoader.load_feed(self.config.real_root, self.sampling_window_start_time,
-                                           self.sim_st, "LTC-USD")
-            params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, feed_df, params_ob_state,
-                                                params_ob_state_seq, self.sim_st)
+                # TODO: massive duplication in the arguments
+                params_ob_state_seq, params_ob_state = reconstruct_orderbook(self.config,
+                                                                             self.sampling_window_start_time,
+                                                                             self.logger)
+                feed_df = DataLoader.load_feed(self.config.real_root, self.sampling_window_start_time,
+                                               self.sim_st, "LTC-USD")
+                params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, feed_df, params_ob_state,
+                                                    params_ob_state_seq, self.sim_st)
 
-            # Save params (that can be reused!)
-            Writer.json_to_file(params, params_path)
-            self.logger.info("Permanent parameters saved to: " + params_path)
+                # Save params (that can be reused!)
+                Writer.json_to_file(params, params_path)
+                self.logger.info("Permanent parameters saved to: " + params_path)
 
-        # Generate .conf file
-        sim_config = self.generate_config_dict(orderbook_path, params_path)
-        sim_config_string = SimConfig.generate_config_string(sim_config)
-        self.save_config(sim_config_string)
-        return True
-        # except Exception as e:
-        #     self.logger.error(
-        #         "Simulation preparation failed, skipping, at: " + self.sim_st.isoformat() + "\nError was\n" + str(e))
-        #     return False
+            # Generate .conf file
+            sim_config = self.generate_config_dict(orderbook_path, params_path)
+            sim_config_string = SimConfig.generate_config_string(sim_config)
+            self.save_config(sim_config_string)
+            return True
+        except Exception as e:
+            self.logger.error(
+                "Simulation preparation failed, skipping, at: " + self.sim_st.isoformat() + "\nError was\n" + str(e))
+            return False
 
     @concurrent.process(timeout=300)
     def run_simulation(self):
