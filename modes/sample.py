@@ -27,6 +27,7 @@ class Sample:
     def plot_cdf(x, cy, data_desc: str = ""):
         import matplotlib.pyplot as plt
 
+        plt.figure(figsize=(12, 8))
         plt.plot(x, cy)
         plt.title(data_desc + " cdf")
 

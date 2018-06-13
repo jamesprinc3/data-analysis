@@ -150,26 +150,65 @@ class Statistics:
                 continue
 
             hurst_exp = nolds.hurst_rs(prices)
+            # hurst_exp = nolds.dfa(prices) - 1
+            print(hurst_exp)
             if 0 < hurst_exp < 1:
                 hurst_exps.append(hurst_exp)
-                times.append(iter_et)
+                times.append(iter_st)
             else:
                 pass
         return times, hurst_exps
 
     @staticmethod
-    def plot_hurst_exponent(times, hurst_exps, product, st, step_minutes, window_minutes):
+    def plot_metric_daily(times, vals, product, st, step_minutes, window_minutes, name: str):
         hours = list(map(lambda t: (t - st).seconds / 3600, times))
 
         import matplotlib.pyplot as plt
         plt.figure(figsize=(12, 8))
         plt.ylim(0, 1)
-        plt.plot(hours, hurst_exps)
+        plt.plot(hours, vals)
         plt.xlabel("Hour of day")
-        plt.ylabel("Hurst Exponent")
-        plt.title(st.date().isoformat() + " Hurst exponent plotted every " + str(
+        plt.ylabel(name)
+        plt.title(product + " " + st.date().isoformat() + " " + name + " plotted every " + str(
             step_minutes) + " minutes, window size of " + str(window_minutes) + " minutes")
-        plt.savefig("/Users/jamesprince/project-data/results/hurst/" + product + "/" + st.date().isoformat() + ".png")
+        plt.show()
+        # plt.savefig(
+        #     "/Users/jamesprince/project-data/results/" + name + "/" + product + "/" + st.date().isoformat() + ".png")
+
+    @staticmethod
+    def plot_metric_daily_comparison(times, vals1, vals2, product, st, step_minutes, window_minutes, name1: str,
+                                     name2: str):
+        hours = list(map(lambda t: (t - st).seconds / 3600, times))
+
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 8))
+        # plt.ylim(0, 1)
+        plt.plot(hours, vals1, label=name1)
+        plt.plot(hours, vals2, label=name2)
+        plt.xlabel("Hour of day")
+        plt.title(product + " " + st.date().isoformat() + " " + name1 + " plotted against " + name2 + " every " + str(
+            step_minutes) + " minutes, window size of " + str(window_minutes) + " minutes")
+
+        plt.legend()
+        plt.show()
+
+    # plt.savefig(
+    #     "/Users/jamesprince/project-data/results/" + name + "/" + product + "/" + st.date().isoformat() + ".png")
+
+    @staticmethod
+    def plot_lyapunov_exponent(times, lyap_exps, product, st, step_minutes, window_minutes):
+        hours = list(map(lambda t: (t - st).seconds / 3600, times))
+
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 8))
+        plt.ylim(0, 1)
+        plt.plot(hours, lyap_exps)
+        plt.xlabel("Hour of day")
+        plt.ylabel("Lyapunov Exponent")
+        plt.title(st.date().isoformat() + "Lyapunov exponent plotted every " + str(
+            step_minutes) + " minutes, window size of " + str(window_minutes) + " minutes")
+        plt.savefig(
+            "/Users/jamesprince/project-data/results/lyapunov/" + product + "/" + st.date().isoformat() + ".png")
         plt.show()
 
     @staticmethod

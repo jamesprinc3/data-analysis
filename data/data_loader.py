@@ -87,6 +87,7 @@ class DataLoader:
 
         # TODO: introduce wrapping over days
         # TODO: split this function up!
+        # TODO: BUG: struggles to load small blobs of data
         for i in range(0, hour_delta + 1):
             filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"
             cls.logger.debug(filename)

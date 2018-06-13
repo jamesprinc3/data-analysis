@@ -18,18 +18,24 @@ class BacktestConfig:
         self.num_predictions = int(config['data']['num_predictions'])
         self.interval = int(config['data']['interval'])
 
-        self.real_root = root_path + config['part_paths']['real_root']
-        self.sim_root = root_path + config['part_paths']['sim_root']
-        self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root']
+        self.real_root = root_path + config['part_paths']['real_root'] + self.product + "/"
+        self.sim_root = root_path + config['part_paths']['sim_root'] + self.product + "/"
+        self.orderbook_input_root = root_path + config['part_paths']['orderbook_input_root'] + self.product + "/"
 
-        self.graphs_root = root_path + config['part_paths']['graphs_output_root']
-        self.params_root = root_path + config['part_paths']['params_output_root']
-        pathlib.Path(self.params_root).mkdir(parents=True, exist_ok=True)
-        self.sim_logs_root = root_path + config['part_paths']['sim_logs_root']
+        self.graphs_output_root = root_path + config['part_paths']['graphs_output_root'] + self.product + "/"
+        self.params_output_root = root_path + config['part_paths']['params_output_root'] + self.product + "/"
+        self.sim_logs_root = root_path + config['part_paths']['sim_logs_root'] + self.product + "/"
 
-        self.orderbook_output_root = root_path + config['part_paths']['orderbook_output_root']
-        self.correlation_root = root_path + config['part_paths']['correlation_output_root']
-        self.confidence_root = root_path + config['part_paths']['confidence_output_root']
+        pathlib.Path(self.graphs_output_root).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.params_output_root).mkdir(parents=True, exist_ok=True)
+
+        self.orderbook_output_root = root_path + config['part_paths']['orderbook_output_root'] + self.product + "/"
+        self.correlation_output_root = root_path + config['part_paths']['correlation_output_root'] + self.product + "/"
+        self.confidence_output_root = root_path + config['part_paths']['confidence_output_root'] + self.product + "/"
+
+        pathlib.Path(self.orderbook_output_root).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.correlation_output_root).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.confidence_output_root).mkdir(parents=True, exist_ok=True)
 
         self.sim_config_path = root_path + config['part_paths']['sim_config_path']
         self.jar_path = root_path + config['part_paths']['jar_path']
@@ -56,5 +62,3 @@ class BacktestConfig:
         import matplotlib.pyplot as plt
 
         self.plt = plt
-
-

@@ -160,7 +160,7 @@ def sample_mode():
 
     params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, graph=True)
     print(params)
-    Writer.json_to_file(params, config.params_root + "params.json")
+    Writer.json_to_file(params, config.params_output_root + "params.json")
 
 def simulation_mode(st: datetime.datetime = None):
     SimulationAnalysis(config, st).show_graphs()

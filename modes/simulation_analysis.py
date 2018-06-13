@@ -24,7 +24,7 @@ class SimulationAnalysis:
                         + sim_st.date().isoformat() + "/" \
                         + sim_st.time().isoformat() + "/"
 
-        confidence_dir = config.confidence_root \
+        confidence_dir = config.confidence_output_root \
                          + sim_st.date().isoformat() + "/"
 
         pathlib.Path(confidence_dir).mkdir(parents=True, exist_ok=True)

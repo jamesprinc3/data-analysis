@@ -112,6 +112,26 @@ class TestEvaluation(TestCase):
 
         Evaluation.compare_returns(df)
 
+    def test_correlate_report_LTC_USD(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "report/LTC-USD-100sims-17-5-2018.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_report_LTC_USD_some_removed(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "report/LTC-USD-sims-some-removed-17-5-2018.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_report_LTC_USD_2_day(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "report/LTC-USD-17-18-5-2018.csv")
+
+        Evaluation.compare_returns(df)
+
+
+
     def test_hurst_regions(self):
         one_nine = Evaluation.load_csv(
             self.corr_root + "1-9.csv")

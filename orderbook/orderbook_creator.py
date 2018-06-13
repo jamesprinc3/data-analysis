@@ -63,7 +63,6 @@ class OrderBookCreator:
         # TODO: find those orders which were modified, handle carefully
         open_messages = feed_df[feed_df['type'] == 'open']
         open_messages['size'] = open_messages['remaining_size']
-        print(open_messages)
         residual_orders = open_messages[open_messages['sequence'] > ob_state_seq]
         all_orders = ob_state.append(residual_orders)
 

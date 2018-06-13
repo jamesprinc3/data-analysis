@@ -31,7 +31,7 @@ class Backtest:
 
         self.sim_root = self.config.sim_root + sim_st.date().isoformat() + "/" + sim_st.time().isoformat() + "/"
 
-        self.params_root = self.config.params_root + sim_st.date().isoformat() + "/"
+        self.params_root = self.config.params_output_root + sim_st.date().isoformat() + "/"
         pathlib.Path(self.params_root).mkdir(parents=True, exist_ok=True)
 
         sim_logs_dir = self.config.sim_logs_root + sim_st.date().isoformat() + "/"
@@ -156,6 +156,7 @@ class Backtest:
         final_real_price = real_prices_df['price'].iloc[-1]
 
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
+        self.logger.info(str(len(sim_analysis.all_sims)) + " simulations completed")
         trade_means, trade_ub, trade_lb = self.get_trade_validation_data(sim_analysis, start_price)
         midprice_means, midprice_ub, midprice_lb = self.get_midprice_validation_data(sim_analysis, start_price)
         monte_carlo_data = self.get_monte_carlo_data(sim_analysis)
@@ -165,11 +166,11 @@ class Backtest:
             best_ask_data = self.get_ask_data(sim_analysis)
             self.graphing.plot_spread(best_bid_data, best_ask_data)
 
-        trade_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-trade.csv"
+        trade_correlation_file_path = self.config.correlation_output_root + prog_start.isoformat() + "-trade.csv"
         self.append_final_prices(trade_correlation_file_path,
                                  trade_means, trade_ub, trade_lb,
                                  real_prices_df['price'])
-        midprice_correlation_file_path = self.config.correlation_root + prog_start.isoformat() + "-midprice.csv"
+        midprice_correlation_file_path = self.config.correlation_output_root + prog_start.isoformat() + "-midprice.csv"
         self.append_final_prices(midprice_correlation_file_path,
                                  midprice_means, midprice_ub, midprice_lb,
                                  real_prices_df['price'])

@@ -71,8 +71,6 @@ class Graphing:
         self.config.plt.plot(x, y, marker)
 
     def graph_price_time(self, df: dd, data_desc: str, mid: int, ywindow: int):
-        #
-        print(df)
         self.config.plt.figure(figsize=(12, 8))
 
         buy_df = DataSplitter.get_side("buy", df)
@@ -215,9 +213,12 @@ class Graphing:
 
     def output_graph(self, sim_st, category, title: str):
         self.config.plt.title(title + " " + category)
+        self.config.plt.xlabel("Time (s)")
+        # TODO chnage this dollar for other quote currencies.
+        self.config.plt.ylabel("Price ($)")
 
         if self.config.graph_mode == "save":
-            plot_root = self.config.graphs_root + category + "/" + sim_st.date().isoformat() + "/"
+            plot_root = self.config.graphs_output_root + category + "/" + sim_st.date().isoformat() + "/"
             self.save_figure(plot_root, title)
         if self.config.graph_mode == "show":
             self.config.plt.show()

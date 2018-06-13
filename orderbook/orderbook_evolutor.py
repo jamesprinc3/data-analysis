@@ -54,12 +54,6 @@ class OrderBookEvolutor:
         if max_events:
             indices = range(0, max_events)
 
-        first_sec_df = feed_df[feed_df['time'] < self.st + datetime.timedelta(seconds=2)]
-        first_sec_data = list(map(tuple, first_sec_df.values.tolist()))
-
-        for event in first_sec_data:
-            print(event)
-
         for i in indices:
             event = feed_df.iloc[i]
 

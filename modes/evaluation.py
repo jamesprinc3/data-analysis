@@ -192,6 +192,10 @@ class Evaluation:
         df['sp_dir'] = np.sign(df['sp_diff'])
         Evaluation.up_down(df['rp_dir'], "Real")
         Evaluation.up_down(df['sp_dir'], "Sim")
+        df['correct_dir'] = df['rp_dir'] == df['sp_dir']
+
+        df['tit_for_tat'] = df['rp_dir'].shift(-1)
+        df['tit_for_tat_correct'] = df['rp_dir'] == df['tit_for_tat']
         return df
 
     @staticmethod
@@ -208,6 +212,11 @@ class Evaluation:
         print(str(prob * 100) + "% Probability of getting this result from random chance")
         print(str(1 - scipy.stats.binom.cdf(correct_dirs, total, 0.5)) + " p-value")
         print("Corr coeff " + str(np.corrcoef(df['rp_diff'], df['sp_diff'])))
+
+        tit_for_tat_correct = len(df[df['tit_for_tat_correct'] == True])
+        tit_for_tat_correct_pc = tit_for_tat_correct / total
+        print(str(tit_for_tat_correct) + "/" + str(total) + " (" + str(tit_for_tat_correct_pc)
+              + "%) were correct using tit for tat")
 
     @staticmethod
     def plot_linregress(x1, x2, window, show_regression_line=True, xlabel="", ylabel=""):
