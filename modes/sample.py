@@ -60,6 +60,7 @@ class Sample:
                 correlations['buy_price_size'] = price_size_corrs['buy']
                 correlations['sell_price_size'] = price_size_corrs['sell']
 
+                # Sell order prices relative
                 sell_orders = DataSplitter.get_side("sell", orders_df)
                 sell_prices_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
                                                                                        ob_state_time, feed_df,
@@ -68,6 +69,7 @@ class Sample:
                 discrete_distributions["sell_price_relative"] = {'x': sell_x.tolist(), 'cy': sell_cy.tolist()}
                 Sample.plot_cdf(sell_x, sell_cy, "Sell order prices (relative)")
 
+                # Buy order prices relative
                 buy_orders = DataSplitter.get_side("buy", orders_df)
                 buy_prices_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
                                                                                       ob_state_time, feed_df,
@@ -77,14 +79,39 @@ class Sample:
                 discrete_distributions["buy_price_relative"] = {'x': buy_x.tolist(), 'cy': buy_cy.tolist()}
                 Sample.plot_cdf(buy_x, buy_cy, "Buy prices (relative) (flipped for comparison)")
 
+                # Buy side cancel prices relative
+                buy_cancels = DataSplitter.get_side("buy", cancels_df)
+                buy_cancels_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
+                                                                                       ob_state_time, feed_df,
+                                                                                       buy_cancels)
+                buy_cancels_relative = buy_cancels_relative.apply(lambda x: -x)
+                buy_cancels_x, buy_cancels_cy = Sample.get_cdf_data(buy_cancels_relative)
+                discrete_distributions["buy_cancels_relative"] = {'x': buy_cancels_x.tolist(),
+                                                                  'cy': buy_cancels_cy.tolist()}
+                Sample.plot_cdf(buy_cancels_x, buy_cancels_cy, "Buy cancel prices (relative) (flipped for comparison)")
+
+                # Sell side cancel prices relative
+                sell_cancels = DataSplitter.get_side("sell", cancels_df)
+                sell_cancels_relative = DataTransformer.get_prices_relative_to_midprice(ob_state, ob_state_seq_num,
+                                                                                        ob_state_time, feed_df,
+                                                                                        sell_cancels)
+                sell_cancels_x, sell_cancels_cy = Sample.get_cdf_data(sell_cancels_relative)
+                discrete_distributions["sell_cancels_relative"] = {'x': sell_cancels_x.tolist(),
+                                                                   'cy': sell_cancels_cy.tolist()}
+                Sample.plot_cdf(sell_cancels_x, sell_cancels_cy,
+                                "Sell cancel prices (relative) (flipped for comparison)")
+
+                # Market orders
                 market_orders = DataSplitter.get_market_orders_from_feed(orders_df)
 
+                # Buy market order sizes
                 buy_market_sizes = DataSplitter.get_side("buy", market_orders)['size'].dropna().apply(lambda x: abs(x))
                 buy_market_sizes_x, buy_market_sizes_cy = Sample.get_cdf_data(buy_market_sizes)
                 discrete_distributions["buy_market_size"] = \
                     {'x': buy_market_sizes_x.tolist(), 'cy': buy_market_sizes_cy.tolist()}
                 Sample.plot_cdf(buy_market_sizes_x, buy_market_sizes_cy, "Buy market order sizes")
 
+                # Sell market order sizes
                 sell_market_sizes = DataSplitter.get_side("sell", market_orders)['size'].dropna().apply(
                     lambda x: abs(x))
                 sell_market_sizes_x, sell_market_sizes_cy = Sample.get_cdf_data(sell_market_sizes)

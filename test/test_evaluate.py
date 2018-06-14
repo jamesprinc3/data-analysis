@@ -130,6 +130,12 @@ class TestEvaluation(TestCase):
 
         Evaluation.compare_returns(df)
 
+    def test_correlate_ETH_USD(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "ETH-USD/17-05-18-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
 
 
     def test_hurst_regions(self):

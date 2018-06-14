@@ -147,14 +147,19 @@ class Graphing:
         self.config.plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         self.config.plt.legend(loc='upper right')
 
-    def plot_spread(self, best_bid_data, best_ask_data):
-        for index in best_bid_data.keys():
+    def plot_spread(self, best_bid_data, best_ask_data, num: int = None):
+
+        idxs = list(best_bid_data.keys())
+        if num is not None:
+            idxs = idxs[0:num]
+
+        for index in idxs:
             ymin, ymax = self.get_y_bounds(
                 (best_bid_data[index]['price'].iloc[0] + best_ask_data[index]['price'].iloc[0]) / 2,
                 self.config.ywindow)
 
             self.config.plt.figure(figsize=(12, 8))
-            self.config.plt.ylim(ymin, ymax)
+            # self.config.plt.ylim(ymin, ymax)
 
             self.config.plt.plot(best_bid_data[index]['time'], best_bid_data[index]['price'], 'g',
                                  label='Best Bid Price')

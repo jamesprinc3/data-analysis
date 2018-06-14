@@ -224,24 +224,31 @@ class TestReport(TestCase):
         # orders_dd, trades_dd, cancels_dd, midprices_dd, best_bids_dd, best_asks_dd
 
         orders_df = all_sims[0][0].compute()
+        cancels_df = all_sims[0][2].compute()
         midprice_df = all_sims[0][3].compute()
 
         conf = configparser.ConfigParser()
         conf.read("../config/backtest.ini")
         config = BacktestConfig(conf)
 
-        limit_orders = DataSplitter.get_limit_orders(orders_df)
-        limit_orders['seconds'] = (limit_orders['time'] - limit_orders['time'].iloc[0]).apply(
+        # limit_orders = DataSplitter.get_limit_orders(orders_df)
+        # limit_orders['seconds'] = (limit_orders['time'] - limit_orders['time'].iloc[0]).apply(
+        #     lambda x: x.total_seconds())
+        #
+        # buy_limit_orders = DataSplitter.get_side("buy", limit_orders)
+        # sell_limit_orders = DataSplitter.get_side("sell", limit_orders)
+        #
+        # plt.plot(buy_limit_orders['seconds'], buy_limit_orders['price'], 'r+', label="Buy limit orders")
+        # plt.plot(sell_limit_orders['seconds'], sell_limit_orders['price'], 'b+', label="Sell limit orders")
+
+        cancels_df['seconds'] = (cancels_df['time'] - cancels_df['time'].iloc[0]).apply(
             lambda x: x.total_seconds())
 
-        buy_limit_orders = DataSplitter.get_side("buy", limit_orders)
-        sell_limit_orders = DataSplitter.get_side("sell", limit_orders)
+        buy_cancels = DataSplitter.get_side("buy", cancels_df)
+        sell_cancels = DataSplitter.get_side("sell", cancels_df)
 
-        plt.plot(buy_limit_orders['seconds'], buy_limit_orders['price'], 'r+', label="Buy limit orders")
-        plt.plot(sell_limit_orders['seconds'], sell_limit_orders['price'], 'b+', label="Sell limit orders")
-
-        # plt.plot(buy_cancels['seconds'], buy_cancels['price'], 'r+', label="Buy side cancels")
-        # plt.plot(sell_cancels['seconds'], sell_cancels['price'], 'b+', label="Sell side cancels")
+        plt.plot(buy_cancels['seconds'], buy_cancels['price'], 'r+', label="Buy side cancels")
+        plt.plot(sell_cancels['seconds'], sell_cancels['price'], 'b+', label="Sell side cancels")
 
         # plt.plot(res_df['seconds'], res_df['best_bid'], label='Best bid price')
         # plt.plot(res_df['seconds'], res_df['best_ask'], label='Best ask price')

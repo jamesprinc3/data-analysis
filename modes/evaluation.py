@@ -102,6 +102,7 @@ class Evaluation:
     @staticmethod
     def compare_returns(df, compare_hurst_exp: bool = False, compare_lyapunov_exponent=False, window: int = 10):
         """Compare returns of the simulated markets with the real market"""
+        # TODO: change this hardcoded mess
         product = "LTC-USD"
 
         plt = Evaluation.get_plt(window)

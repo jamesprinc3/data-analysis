@@ -75,7 +75,7 @@ class Backtest:
                                                                              self.sampling_window_start_time,
                                                                              self.logger)
                 feed_df = DataLoader.load_feed(self.config.real_root, self.sampling_window_start_time,
-                                               self.sim_st, "LTC-USD")
+                                               self.sim_st, self.config.product)
                 params = Sample.generate_sim_params(orders_df, trades_df, cancels_df, feed_df, params_ob_state,
                                                     params_ob_state_seq, self.sim_st)
 
@@ -153,7 +153,7 @@ class Backtest:
     def evaluate_simulation(self, prog_start: datetime.datetime):
         real_prices_df = self.__fetch_real_prices()
         start_price = real_prices_df['price'].iloc[0]
-        final_real_price = real_prices_df['price'].iloc[-1]
+        final_real_price = real_prices_df['price'].dropna().iloc[-1]
 
         sim_analysis = SimulationAnalysis(self.config, self.sim_st)
         self.logger.info(str(len(sim_analysis.all_sims)) + " simulations completed")
@@ -164,7 +164,7 @@ class Backtest:
         if self.config.spread:
             best_bid_data = self.get_bid_data(sim_analysis)
             best_ask_data = self.get_ask_data(sim_analysis)
-            self.graphing.plot_spread(best_bid_data, best_ask_data)
+            self.graphing.plot_spread(best_bid_data, best_ask_data, 10)
 
         trade_correlation_file_path = self.config.correlation_output_root + prog_start.isoformat() + "-trade.csv"
         self.append_final_prices(trade_correlation_file_path,
@@ -175,13 +175,14 @@ class Backtest:
                                  midprice_means, midprice_ub, midprice_lb,
                                  real_prices_df['price'])
 
+        self.graphing.plot_monte_carlo(final_real_price, monte_carlo_data, self.sim_st, self.get_xaxis_times())
+
         self.graphing.plot_comparison("tradeprices", self.sim_st, trade_means, trade_ub, trade_lb,
                                       [0] + self.get_xaxis_times(),
                                       real_prices_df['time'], real_prices_df['price'])
         self.graphing.plot_comparison("midprices", self.sim_st, midprice_means, midprice_ub, midprice_lb,
                                       [0] + self.get_xaxis_times(),
                                       real_prices_df['time'], real_prices_df['price'])
-        self.graphing.plot_monte_carlo(final_real_price, monte_carlo_data, self.sim_st, self.get_xaxis_times())
 
     def append_final_prices(self, dst, sim_means, sim_ubs, sim_lbs, real_prices):
         start_price = real_prices.dropna().iloc[0]
