@@ -79,7 +79,7 @@ class DataLoader:
         return dirs
 
     @classmethod
-    def load_feed(cls, root, start_time: datetime, end_time: datetime, product: str) -> dd:
+    def load_feed(cls, root, start_time: datetime, end_time: datetime, product: str, fmt: str = "parquet") -> dd:
         """Loads in a feed of real data and applies formatting to timestamp, price and size columns"""
         # Assume data is on the same day and just hours apart for now
         hour_delta = end_time.hour - start_time.hour
@@ -89,14 +89,17 @@ class DataLoader:
         # TODO: split this function up!
         # TODO: BUG: struggles to load small blobs of data
         for i in range(0, hour_delta + 1):
-            filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + ".parquet"
+            filename = start_time.date().isoformat() + "/" + str("%02i" % (start_time.hour + i)) + "." + fmt
             cls.logger.debug(filename)
             files_to_load.append(filename)
 
         feed_df = pd.DataFrame()
         for filename in files_to_load:
             file_path = root + filename
-            file_df = pd.read_parquet(file_path)
+            if fmt == "parquet":
+                file_df = pd.read_parquet(file_path)
+            else:
+                file_df = pd.read_csv(file_path)
             file_df = DataSplitter.get_product(product, file_df)
             file_df = DataLoader().format_dd(file_df)
             file_df = file_df[start_time < file_df['time']]

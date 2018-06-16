@@ -102,7 +102,7 @@ class TestExponent(TestCase):
         print(res)
 
     def test_hurst_windowed(self):
-        day = 17
+        day = 26
         product = "LTC-USD"
         for i in range(0, 1):
             # day += 1

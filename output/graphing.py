@@ -143,7 +143,7 @@ class Graphing:
                                      label="Simulated 2.5th and 97.5th percentiles")
 
         # plot the mean on top
-        self.config.plt.plot(times, mean, color_mean, label="Simulated Median (50th percentile")
+        self.config.plt.plot(times, mean, color_mean, label="Simulated Median (50th percentile)")
         self.config.plt.plot(real_times, real_prices, 'r+', label="Real Trades")
         self.config.plt.legend(loc='upper right')
 

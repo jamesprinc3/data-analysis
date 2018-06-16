@@ -2,6 +2,8 @@ import configparser
 from datetime import timedelta
 from unittest import TestCase
 
+import pandas as pd
+
 from backtest_config import BacktestConfig
 from data.data_loader import DataLoader
 from data.data_splitter import DataSplitter
@@ -36,18 +38,18 @@ class TestEvaluation(TestCase):
         real_limit_orders = DataSplitter.get_limit_orders(real_orders)
         real_market_orders = DataSplitter.get_market_orders(real_orders)
         real_trades = DataSplitter.get_trades(feed_df)
-        real_trades['size'] = real_trades['remaining_size']
+        real_trades['size'] = pd.to_numeric(real_trades['remaining_size'])
         real_cancels = DataSplitter.get_cancellations(feed_df)
-        real_cancels['size'] = real_cancels['remaining_size']
+        real_cancels['size'] = pd.to_numeric(real_cancels['remaining_size'])
 
         print("Order Buy/Sell limit metrics")
         Evaluation.compare_order_metrics(real_limit_orders, all_sim_limit_orders)
         print("Order Buy/Sell market metrics")
         Evaluation.compare_order_metrics(real_market_orders, all_sim_market_orders)
+        print("Cancel metrics")
+        Evaluation.compare_order_metrics(real_cancels, all_sim_cancels)
         print("Trade metrics")
         Evaluation.compare_metrics(real_trades, all_sim_trades)
-        print("Cancel metrics")
-        Evaluation.compare_metrics(real_cancels, all_sim_cancels)
     
     def test_can_correlate_10(self):
         df = Evaluation.load_csv(self.corr_root + "LTC-cov.csv")
@@ -130,12 +132,53 @@ class TestEvaluation(TestCase):
 
         Evaluation.compare_returns(df)
 
+    def test_correlate_cancel_relative(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD/cancel-relative-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
     def test_correlate_ETH_USD(self):
         df = Evaluation.load_csv(
             self.corr_root + "ETH-USD/17-05-18-midprice.csv")
 
         Evaluation.compare_returns(df)
 
+    def test_correlate_ETH_USD_2(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "ETH-USD/17-05-2018-2-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_ETH_USD_2_trade(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "ETH-USD/17-05-2018-2-trades.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_BCH_USD_midprice(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "BCH-USD/17-05-2018-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_BCH_USD_trade(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "BCH-USD/17-05-2018-trade.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_LTC_USD_26_05_2018_100(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD/26-05-2018-100-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_LTC_USD_26_05_2018_200(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD/26-05-2018-200-midprice.csv")
+
+        Evaluation.compare_returns(df)
 
 
     def test_hurst_regions(self):
