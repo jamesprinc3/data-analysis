@@ -102,7 +102,7 @@ class TestExponent(TestCase):
         print(res)
 
     def test_hurst_windowed(self):
-        day = 26
+        day = 17
         product = "LTC-USD"
         for i in range(0, 1):
             # day += 1
@@ -114,7 +114,7 @@ class TestExponent(TestCase):
                                                       st,
                                                       et, product)
 
-            window_minutes = 60
+            window_minutes = 10
             step_minutes = 10
             times, hurst_exps = Statistics.get_hurst_exponent_over_time(trades, st, et, step_minutes, window_minutes)
             Statistics.plot_metric_daily(times, hurst_exps, product, st, step_minutes, window_minutes, "Hurst Exponent")

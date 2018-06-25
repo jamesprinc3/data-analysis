@@ -142,31 +142,37 @@ class TestEvaluation(TestCase):
         df = Evaluation.load_csv(
             self.corr_root + "ETH-USD/17-05-18-midprice.csv")
 
-        Evaluation.compare_returns(df)
+        Evaluation.compare_returns(df, window=100)
 
     def test_correlate_ETH_USD_2(self):
         df = Evaluation.load_csv(
             self.corr_root + "ETH-USD/17-05-2018-2-midprice.csv")
 
-        Evaluation.compare_returns(df)
+        Evaluation.compare_returns(df, window=100)
 
-    def test_correlate_ETH_USD_2_trade(self):
+    def test_correlate_ETH_USD_all(self):
         df = Evaluation.load_csv(
-            self.corr_root + "ETH-USD/17-05-2018-2-trades.csv")
+            self.corr_root + "ETH-USD/17-05-2018-all-midprice.csv")
 
-        Evaluation.compare_returns(df)
+        Evaluation.compare_returns(df, window=100)
+
+    def test_correlate_ETH_USD_all_trade(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "ETH-USD/17-05-2018-all-trade.csv")
+
+        Evaluation.compare_returns(df, window=100)
 
     def test_correlate_BCH_USD_midprice(self):
         df = Evaluation.load_csv(
             self.corr_root + "BCH-USD/17-05-2018-midprice.csv")
 
-        Evaluation.compare_returns(df)
+        Evaluation.compare_returns(df, window=100)
 
     def test_correlate_BCH_USD_trade(self):
         df = Evaluation.load_csv(
             self.corr_root + "BCH-USD/17-05-2018-trade.csv")
 
-        Evaluation.compare_returns(df)
+        Evaluation.compare_returns(df, window=100)
 
     def test_correlate_LTC_USD_26_05_2018_100(self):
         df = Evaluation.load_csv(
@@ -177,6 +183,12 @@ class TestEvaluation(TestCase):
     def test_correlate_LTC_USD_26_05_2018_200(self):
         df = Evaluation.load_csv(
             self.corr_root + "LTC-USD/26-05-2018-200-midprice.csv")
+
+        Evaluation.compare_returns(df)
+
+    def test_correlate_LTC_USD_26_05_2018_all(self):
+        df = Evaluation.load_csv(
+            self.corr_root + "LTC-USD/26-05-2018-all-midprice.csv")
 
         Evaluation.compare_returns(df)
 

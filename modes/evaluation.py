@@ -219,6 +219,13 @@ class Evaluation:
         print(str(tit_for_tat_correct) + "/" + str(total) + " (" + str(tit_for_tat_correct_pc)
               + "%) were correct using tit for tat")
 
+        real_return_mean = df['rp_diff'].mean()
+        real_return_std_dev = df['rp_diff'].std()
+        real_coeff_var = real_return_std_dev / df['last_real_price'].mean()
+        print("Real return mean: " + str(real_return_mean))
+        print("Real return std. dev.: " + str(real_return_std_dev))
+        print("Real coeff var: " + str(real_coeff_var * 100))
+
     @staticmethod
     def plot_linregress(x1, x2, window, show_regression_line=True, xlabel="", ylabel=""):
         ling = scipy.stats.linregress(x1, x2)
