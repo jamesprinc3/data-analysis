@@ -53,8 +53,6 @@ class Sample:
             correlations = {}
             discrete_distributions = {}
 
-            DataTransformer.price_distributions(trades_df, orders_df, relative=True, graph=True)
-
             # TODO: reduce code duplication and parallelise inverse CDF generation
             with pebble.ProcessPool() as pool:
                 price_size_corrs = Correlations.get_price_size_corr(trades_df,

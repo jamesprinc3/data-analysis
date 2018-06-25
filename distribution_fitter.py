@@ -1,7 +1,5 @@
 # Some methods in this file were inspired by: https://stackoverflow.com/a/37616966
 
-import warnings
-
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -14,128 +12,7 @@ class DistributionFitter:
         matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
         matplotlib.style.use('ggplot')
 
-    # Create models from data
-    @staticmethod
-    def best_fit_distribution(data, bins=200, ax=None):
-        """Model data by finding best fit distribution to data"""
 
-        # Strip NaNs
-        data = data.dropna()
-
-        # Get histogram of original data
-        y, x = np.histogram(data, bins=bins, density=True)
-        x = (x + np.roll(x, -1))[:-1] / 2.0
-
-        # Distributions to check
-        # DISTRIBUTIONS = [
-        #     #st.alpha,
-        #     st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
-        #     st.dgamma,st.dweibull,st.erlang,st.expon,st.exponnorm,st.exponweib,st.exponpow,st.f,st.fatiguelife,st.fisk,
-        #     st.foldcauchy,st.foldnorm,st.frechet_r,st.frechet_l,st.genlogistic,st.genpareto,st.gennorm,st.genexpon,
-        #     st.genextreme,st.gausshyper,st.gamma,st.gengamma,st.genhalflogistic,st.gilbrat,st.gompertz,st.gumbel_r,
-        #     st.gumbel_l,st.halfcauchy,st.halflogistic,st.halfnorm,st.halfgennorm,st.hypsecant,st.invgamma,st.invgauss,
-        #     st.invweibull,st.johnsonsb,st.johnsonsu,st.ksone,st.kstwobign,st.laplace,st.levy,st.levy_l,st.levy_stable,
-        #     st.logistic,st.loggamma,st.loglaplace,st.lognorm,st.lomax,st.maxwell,st.mielke,st.nakagami,st.ncx2,st.ncf,
-        #     st.nct,st.norm,st.pareto,st.pearson3,st.powerlaw,st.powerlognorm,st.powernorm,st.rdist,st.reciprocal,
-        #     st.rayleigh,st.rice,st.recipinvgauss,st.semicircular,st.t,st.triang,st.truncexpon,st.truncnorm,st.tukeylambda,
-        #     st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
-        # ]
-
-        DISTRIBUTIONS = [st.beta, st.cauchy, st.chi2,
-                         st.gamma,  st.expon, st.laplace, st.pareto, st.poisson,
-                         st.lognorm, st.norm]  # st.vonmises, st.f, st.gumbel_r, st.gumbel_l,, st.weibull_min, st.weibull_max] #st.loggamma,
-
-        # DISTRIBUTIONS = [st.expon]
-
-        # Best holders
-        best_distribution = st.norm
-        best_params = (0.0, 1.0)
-        best_sse = np.inf
-
-        # Estimate distribution parameters from data
-        for distribution in DISTRIBUTIONS:
-
-            # Try to fit the distribution
-            try:
-                # Ignore warnings from data that can't be fit
-                with warnings.catch_warnings():
-                    warnings.filterwarnings('ignore')
-
-                    # fit dist to data
-                    params = distribution.fit(data)
-
-                    # Separate parts of parameters
-                    arg = params[:-2]
-                    loc = params[-2]
-                    scale = params[-1]
-
-                    # Calculate fitted PDF and error with fit in distribution
-                    pdf = distribution.pdf(x, loc=loc, scale=scale, *arg)
-                    sse = np.sum(np.power(y - pdf, 2.0))
-
-                    # if axis pass in add to plot
-                    try:
-                        if ax:
-                            pd.Series(pdf, x).plot(ax=ax)
-                    except Exception:
-                        pass
-
-                    # identify if this distribution is better
-                    if best_sse > sse > 0:
-                        best_distribution = distribution
-                        best_params = params
-                        best_sse = sse
-
-            except Exception:
-                pass
-
-        return best_distribution, best_params
-
-    def best_fit_params(self, data, distribution, bins=200, ax=None):
-        """Model data by finding best fit params for a given distribution"""
-        # Get histogram of original data
-        y, x = np.histogram(data, bins=bins, density=True)
-        x = (x + np.roll(x, -1))[:-1] / 2.0
-
-        # Best holders
-        best_distribution = distribution
-        best_params = (0.0, 1.0)
-        best_sse = np.inf
-
-        # Try to fit the distribution
-        try:
-            # Ignore warnings from data that can't be fit
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore')
-
-                # fit dist to data
-                params = distribution.fit(data)
-
-                # Separate parts of parameters
-                arg = params[:-2]
-                loc = params[-2]
-                scale = params[-1]
-
-                # Calculate fitted PDF and error with fit in distribution
-                pdf = distribution.pdf(x, loc=loc, scale=scale, *arg)
-                sse = np.sum(np.power(y - pdf, 2.0))
-
-                # if axis pass in add to plot
-                try:
-                    if ax:
-                        pd.Series(pdf, x).plot(ax=ax)
-                except Exception:
-                    pass
-
-                # identify if this distribution is better
-                if best_sse > sse > 0:
-                    best_params = params
-                    best_sse = sse
-
-        except Exception:
-            pass
-
-        return best_params
 
     @staticmethod
     def make_pdf(dist, params, size=10000):
@@ -156,18 +33,6 @@ class DistributionFitter:
         pdf = pd.Series(y, x)
 
         return pdf
-
-    def best_fit_with_graphs(self, data, data_desc: str, xlabel: str, bins=200, axes=None):
-        # Find best fit distribution
-        best_fit, best_fit_params = self.best_fit_distribution(data, bins)
-
-        # Get the name and params of the best fit
-        best_dist, dist_str = self.get_distribution_string(best_fit, best_fit_params)
-
-        data_desc += u' with best fit distribution \n' + dist_str
-
-        # Display
-        self.plot_data_with_distribution(data, best_dist, best_fit_params, data_desc, xlabel, bins=200)
 
     @staticmethod
     def plot_data_with_distribution(data, dist, fit_params, data_desc: str, xlabel: str, bins=200, show=False):

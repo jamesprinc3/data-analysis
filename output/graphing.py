@@ -7,7 +7,6 @@ import pandas as pd
 from data.data_splitter import DataSplitter
 from data.data_transformer import DataTransformer
 from data.data_utils import DataUtils
-from distribution_fitter import DistributionFitter
 
 
 class Graphing:
@@ -117,7 +116,7 @@ class Graphing:
     def date_to_unix(s, unit: str):
         return pd.to_datetime(s, unit=unit).value
 
-    # TODO: REFACTOR (mostly replaced by data_utils.remove_tails() )
+    # TODO: DELETE
     @staticmethod
     def graph_distribution(data: pd.Series, description: str, xlabel: str, bins=20, std_devs: int = 2):
         sample_size = 10000
@@ -127,7 +126,7 @@ class Graphing:
             data = data.sample(n=sample_size)
         data = DataUtils().keep_n_std_dev(data, std_devs)
 
-        DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)
+        # DistributionFitter().best_fit_with_graphs(data, description, xlabel, bins=bins)
 
     # Source: https://studywolf.wordpress.com/2017/11/21/matplotlib-legends-for-mean-and-confidence-interval-plots/
     def plot_mean_and_ci_and_real_values(self, mean, lb, ub, times, real_times, real_prices, color_mean=None,
